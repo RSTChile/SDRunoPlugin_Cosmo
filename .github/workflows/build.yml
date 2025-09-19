@@ -19,23 +19,21 @@ jobs:
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.1
 
-    # Opcional: descargar Nana si no está presente en el repo
-    - name: Fetch Nana prebuilt (if not present)
+    - name: Verify Nana ZIP exists in repo
       shell: pwsh
-      env:
-        NANA_URL: ${{ secrets.NANA_URL }} # p. ej., URL a un zip alojado en Releases o un hosting propio
       run: |
-        if (!(Test-Path 'nana/build/bin')) { New-Item -ItemType Directory -Force -Path 'nana/build/bin' | Out-Null }
         if (!(Test-Path 'nana/build/bin/nana_v141_Release_x86.zip')) {
-          if (-not $env:NANA_URL) { throw "NANA_URL secret is not set and nana_v141_Release_x86.zip is missing." }
-          Invoke-WebRequest -Uri $env:NANA_URL -OutFile 'nana/build/bin/nana_v141_Release_x86.zip'
+          Write-Error 'nana/build/bin/nana_v141_Release_x86.zip not found'
+          exit 1
         }
+        Get-ChildItem -Path 'nana/build/bin' -Recurse
 
-    - name: Extract Nana library
+    - name: Extract Nana library (PowerShell)
+      shell: pwsh
       run: |
-        cd nana/build/bin
-        7z x nana_v141_Release_x86.zip
-      shell: cmd
+        Expand-Archive -Path 'nana/build/bin/nana_v141_Release_x86.zip' -DestinationPath 'nana/build/bin' -Force
+        Write-Host 'After extraction:'
+        Get-ChildItem -Path 'nana/build/bin' -Filter *.lib
 
     - name: Build project
       run: |
