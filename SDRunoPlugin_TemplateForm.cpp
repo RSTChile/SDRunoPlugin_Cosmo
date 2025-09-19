@@ -18,7 +18,8 @@ void SDRunoPlugin_TemplateForm::Setup() {
 	title_bar_label.size(nana::size(160, 18));
 
 	versionLbl.caption("v1.0");
-	versionLbl.text_align(nana::align::right, nana::align::center);
+	// CORREGIDO: Cambia el segundo argumento a nana::align_v::center
+	versionLbl.text_align(nana::align::right, nana::align_v::center);
 
 	rcLabel.caption("RC: --");
 	inrLabel.caption("INR: --");
@@ -34,8 +35,6 @@ void SDRunoPlugin_TemplateForm::Setup() {
 		bool restrictivo = (modeCombo.option() == 0);
 		m_parent.SetModeRestrictivo(restrictivo);
 	});
-
-	// Panel y botones ya están en el layout, puedes personalizar imágenes y acciones aquí
 }
 
 void SDRunoPlugin_TemplateForm::Run() {
