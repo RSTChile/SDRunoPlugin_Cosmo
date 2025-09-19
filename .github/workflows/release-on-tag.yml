@@ -1,0 +1,105 @@
+name: Release on tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      CONFIG: Release
+      PLATFORM: Win32
+      ARTIFACT_DIR: artifacts
+      DIST_DIR: installer\\dist
+      INSTALLER_OUT: installer\\output
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Ensure Nana lib (unzip if needed)
+        shell: pwsh
+        run: |
+          $zip = Join-Path $PWD "nana/build/bin/nana_v141_Release_x86.zip"
+          if (Test-Path $zip) {
+            Expand-Archive -Path $zip -DestinationPath (Split-Path $zip) -Force
+          }
+
+      - name: Build solution (Win32 Release)
+        shell: cmd
+        run: >
+          msbuild SDRunoPlugin_Template.sln
+          /t:Build
+          /p:Configuration=%CONFIG%
+          /p:Platform=%PLATFORM%
+          /p:PlatformToolset=v143
+          /m
+
+      - name: Collect build outputs
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:ARTIFACT_DIR | Out-Null
+          New-Item -ItemType Directory -Force -Path $env:DIST_DIR | Out-Null
+
+          $candidates = @(
+            Join-Path $PWD "$env:CONFIG",
+            Join-Path $PWD "Win32/$env:CONFIG",
+            Join-Path $PWD "x86/$env:CONFIG"
+          ) | Where-Object { Test-Path $_ }
+
+          $dlls = @()
+          foreach ($d in $candidates) { $dlls += Get-ChildItem $d -Recurse -Filter *.dll -ErrorAction SilentlyContinue }
+
+          if ($dlls.Count -eq 0) { throw "No DLLs found in expected output folders." }
+
+          $cosmo = $dlls | Where-Object { $_.Name -ieq 'Cosmo.dll' } | Select-Object -First 1
+          if ($null -eq $cosmo) { $cosmo = $dlls | Select-Object -First 1 }
+
+          Copy-Item $cosmo.FullName -Destination (Join-Path $env:ARTIFACT_DIR "Cosmo.dll") -Force
+
+          $pdb = Get-ChildItem $cosmo.Directory -Filter *.pdb -ErrorAction SilentlyContinue | Select-Object -First 1
+          if ($pdb) { Copy-Item $pdb.FullName -Destination (Join-Path $env:ARTIFACT_DIR $pdb.Name) -Force }
+
+          Copy-Item (Join-Path $env:ARTIFACT_DIR "Cosmo.dll") -Destination (Join-Path $env:DIST_DIR "Cosmo.dll") -Force
+
+      - name: Create ZIP package (manual install)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path (Join-Path $PWD "packaging/README_INSTALL.txt"))) {
+            New-Item -ItemType Directory -Force -Path (Join-Path $PWD "packaging") | Out-Null
+            @"\
+            Manual installation instructions for Cosmo (SDRuno Plugin)\
+            1) Close SDRuno.\
+            2) Copy Cosmo.dll into: C:\\Program Files (x86)\\SDRplay\\SDRuno\\Plugins\
+            3) Start SDRuno and enable the plugin.\
+            "@ | Out-File -FilePath (Join-Path $PWD "packaging/README_INSTALL.txt") -Encoding utf8 -Force
+          }
+
+          Copy-Item "packaging/README_INSTALL.txt" -Destination (Join-Path $env:ARTIFACT_DIR "README_INSTALL.txt") -Force
+          Compress-Archive -Path (Join-Path $env:ARTIFACT_DIR "Cosmo.dll"),(Join-Path $env:ARTIFACT_DIR "README_INSTALL.txt") -DestinationPath "Cosmo_Win32_Release.zip" -Force
+
+      - name: Install Inno Setup
+        shell: pwsh
+        run: |
+          choco install innosetup -y
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path $env:INSTALLER_OUT | Out-Null
+          $version = "${{ github.ref_name }}"
+          & "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" "installer/Cosmo.iss" /DMySourceDir="$PWD/$env:DIST_DIR" /DMyAppVersion=$version /DMyOutputDir="$PWD/$env:INSTALLER_OUT"
+
+      - name: Create GitHub Release and upload assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            Cosmo_Win32_Release.zip
+            installer/output/**
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
