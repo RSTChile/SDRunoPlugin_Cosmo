@@ -7,6 +7,9 @@
 #include "iunostreamprocessor.h"
 #include "iunompxobserver.h"
 #include "iunoannotator.h"
+#include <string>
+#include <vector>
+#include <stdint.h>
 
 class IUnoPluginController
 {
