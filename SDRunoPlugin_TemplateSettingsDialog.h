@@ -16,8 +16,6 @@
 
 #include <iunoplugincontroller.h>
 
-
-// TODO: Change these numbers to the height and width of your form
 #define dialogFormWidth (297)
 #define dialogFormHeight (240)
 
@@ -25,23 +23,19 @@ class SDRunoPlugin_TemplateUi;
 
 class SDRunoPlugin_TemplateSettingsDialog : public nana::form
 {
-
 public:
-
-	SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
-	~SDRunoPlugin_TemplateSettingsDialog();
-
-	void Run();
+    SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
+    ~SDRunoPlugin_TemplateSettingsDialog();
+    void Run();
 
 private:
+    void Setup();
+    int LoadX();
+    int LoadY();
 
-	void Setup();
-	int LoadX();
-	int LoadY();
+    // NUEVO: etiqueta para que no se vea vacío
+    nana::label infoLbl{ *this, nana::rectangle(20, 20, 260, 20) };
 
-	// TODO: Now add your UI controls here
-
-	SDRunoPlugin_TemplateUi & m_parent;
-	IUnoPluginController & m_controller;
+    SDRunoPlugin_TemplateUi& m_parent;
+    IUnoPluginController& m_controller;
 };
-
