@@ -13,35 +13,32 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-
 #include <iunoplugincontroller.h>
 
-// Shouldn't need to change these
 #define topBarHeight (27)
 #define bottomBarHeight (8)
 #define sideBorderWidth (8)
-
-// TODO: Change these numbers to the height and width of your form
 #define formWidth (297)
 #define formHeight (240)
 
 class SDRunoPlugin_TemplateUi;
+class SDRunoPlugin_Template;
 
 class SDRunoPlugin_TemplateForm : public nana::form
 {
-
 public:
-
-	SDRunoPlugin_TemplateForm(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);		
+	SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller);		
 	~SDRunoPlugin_TemplateForm();
 	
 	void Run();
-	
-private:
 
+	// Actualiza métricas y mensajes en la UI
+	void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
+
+private:
 	void Setup();
 
-	// The following is to set up the panel graphic to look like a standard SDRuno panel
+	// Gráficos y layout estilo SDRuno panel
 	nana::picture bg_border{ *this, nana::rectangle(0, 0, formWidth, formHeight) };
 	nana::picture bg_inner{ bg_border, nana::rectangle(sideBorderWidth, topBarHeight, formWidth - (2 * sideBorderWidth), formHeight - topBarHeight - bottomBarHeight) };
 	nana::picture header_bar{ *this, true };
@@ -57,15 +54,22 @@ private:
 	nana::picture min_button{ *this, nana::rectangle(0, 0, 20, 15) };
 	nana::label versionLbl{ *this, nana::rectangle(formWidth - 40, formHeight - 30, 30, 20) };
 
-	// Uncomment the following 5 lines if you want a SETT button and panel
 	nana::paint::image img_sett_normal;
 	nana::paint::image img_sett_down;
 	nana::picture sett_button{ *this, nana::rectangle(0, 0, 40, 15) };
 	void SettingsButton_Click();
 	void SettingsDialog_Closed();
 
-	// TODO: Now add your UI controls here
+	// Controles cosmosemióticos:
+	nana::label rcLabel{ *this, nana::rectangle(20, 60, 220, 22) };
+	nana::label inrLabel{ *this, nana::rectangle(20, 90, 220, 22) };
+	nana::label lfLabel{ *this, nana::rectangle(20, 120, 220, 22) };
+	nana::label rdeLabel{ *this, nana::rectangle(20, 150, 220, 22) };
+	nana::label msgLabel{ *this, nana::rectangle(20, 180, 220, 40) };
 
-	SDRunoPlugin_TemplateUi & m_parent;
-	IUnoPluginController & m_controller;
+	// Combo para cambiar modo operativo
+	nana::combox modeCombo{ *this, nana::rectangle(20, 20, 120, 22) };
+
+	SDRunoPlugin_Template& m_parent;
+	IUnoPluginController& m_controller;
 };
