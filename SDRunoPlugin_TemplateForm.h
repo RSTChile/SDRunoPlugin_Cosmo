@@ -14,6 +14,7 @@
 #include <iomanip>
 #include <sstream>
 #include <iunoplugincontroller.h>
+#include <string> // <-- CORREGIDO: Para std::string
 
 #define topBarHeight (27)
 #define bottomBarHeight (8)
@@ -32,13 +33,11 @@ public:
 	
 	void Run();
 
-	// Actualiza métricas y mensajes en la UI
 	void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
 private:
 	void Setup();
 
-	// Gráficos y layout estilo SDRuno panel
 	nana::picture bg_border{ *this, nana::rectangle(0, 0, formWidth, formHeight) };
 	nana::picture bg_inner{ bg_border, nana::rectangle(sideBorderWidth, topBarHeight, formWidth - (2 * sideBorderWidth), formHeight - topBarHeight - bottomBarHeight) };
 	nana::picture header_bar{ *this, true };
@@ -60,14 +59,12 @@ private:
 	void SettingsButton_Click();
 	void SettingsDialog_Closed();
 
-	// Controles cosmosemióticos:
 	nana::label rcLabel{ *this, nana::rectangle(20, 60, 220, 22) };
 	nana::label inrLabel{ *this, nana::rectangle(20, 90, 220, 22) };
 	nana::label lfLabel{ *this, nana::rectangle(20, 120, 220, 22) };
 	nana::label rdeLabel{ *this, nana::rectangle(20, 150, 220, 22) };
 	nana::label msgLabel{ *this, nana::rectangle(20, 180, 220, 40) };
 
-	// Combo para cambiar modo operativo
 	nana::combox modeCombo{ *this, nana::rectangle(20, 20, 120, 22) };
 
 	SDRunoPlugin_Template& m_parent;
