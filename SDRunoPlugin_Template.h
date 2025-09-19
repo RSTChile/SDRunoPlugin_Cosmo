@@ -5,7 +5,7 @@
 #include <iunoplugincontroller.h>
 #include "SDRunoPlugin_TemplateForm.h"
 #include <vector>
-#include <string>
+#include <string>       // <-- CORREGIDO: Agregado para std::string
 #include <fstream>
 #include <cmath>
 
@@ -14,21 +14,18 @@ public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
 
-    void StreamUpdate(float* IQBuffer, int length, bool overload, bool hasAGCEvent) override;
+    // CORREGIDO: Sobrescribe el método virtual correcto
+    void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 
-    // Logging
     void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
 
-    // Métricas cosmosemióticas
     float CalculateRC(const std::vector<float>& iq);
     float CalculateINR(const std::vector<float>& iq);
     float CalculateLF(float rc, float inr);
     float CalculateRDE(float rc, float inr);
 
-    // Detección palimpsesto (ejemplo: números primos en frames, Morse, etc.)
     std::string DetectPalimpsesto(const std::vector<float>& iq);
 
-    // Cambiar modo operativo
     void SetModeRestrictivo(bool restrictivo);
     bool GetModeRestrictivo();
 
@@ -37,7 +34,7 @@ private:
     std::ofstream logFile;
     std::vector<float> refSignal;
     bool haveRef;
-    bool modoRestrictivo; // true = restrictivo, false = funcional-libre
+    bool modoRestrictivo;
 
     void UpdateReference(const std::vector<float>& iq);
 };
