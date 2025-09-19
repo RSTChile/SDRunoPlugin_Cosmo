@@ -1,0 +1,51 @@
+# Build outputs
+*.obj
+*.pch
+*.tlog
+*.log
+*.idb
+*.pdb
+*.ilk
+*.dll
+*.exe
+*.lib
+
+# Build directories
+Debug/
+Release/
+Win32/
+x64/
+artifacts/
+installer/dist/
+installer/output/
+
+# Visual Studio files
+*.suo
+*.user
+*.vcxproj.user
+*.aps
+.vs/
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# Package files
+*.zip
+*.7z
+
+# Node modules (if any)
+node_modules/
+
+# Python cache (if any)
+__pycache__/
+*.pyc
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db

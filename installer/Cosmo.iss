@@ -34,4 +34,4 @@ Source: "{#MySourceDir}\Cosmo.dll"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\{cm:UninstallProgram,{#MyAppName}}"; Filename: "{uninstallexe}"
 
 [Run]
-Filename: "{app}\Cosmo.dll"; Description: "{cm:LaunchProgram,{#StringChange(MyAppName, '&', '&&')}}"; Flags: nowait postinstall skipifsilent shellexec
+; Don't try to run the DLL directly - just show completion message
