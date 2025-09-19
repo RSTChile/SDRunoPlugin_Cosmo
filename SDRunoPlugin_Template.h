@@ -1,36 +1,43 @@
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <iunoplugincontroller.h>
 #include <iunoplugin.h>
 #include <iunostreamobserver.h>
-#include <iunoaudioobserver.h>
-#include <iunoaudioprocessor.h>
-#include <iunostreamobserver.h>
-#include <iunoannotator.h>
+#include <iunoplugincontroller.h>
+#include "SDRunoPlugin_TemplateForm.h"
+#include <vector>
+#include <string>
+#include <fstream>
+#include <cmath>
 
-#include "SDRunoPlugin_TemplateUi.h"
-
-class SDRunoPlugin_Template : public IUnoPlugin
-{
-
+class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
 public:
-	
-	SDRunoPlugin_Template(IUnoPluginController& controller);
-	virtual ~SDRunoPlugin_Template();
+    SDRunoPlugin_Template(IUnoPluginController& controller);
+    virtual ~SDRunoPlugin_Template();
 
-	// Cambia el nombre del plugin aquí
-	virtual const char* GetPluginName() const override { return "Cosmo"; }
+    void StreamUpdate(float* IQBuffer, int length, bool overload, bool hasAGCEvent) override;
 
-	// IUnoPlugin
-	virtual void HandleEvent(const UnoEvent& ev) override;
+    // Logging
+    void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
+
+    // Métricas cosmosemióticas
+    float CalculateRC(const std::vector<float>& iq);
+    float CalculateINR(const std::vector<float>& iq);
+    float CalculateLF(float rc, float inr);
+    float CalculateRDE(float rc, float inr);
+
+    // Detección palimpsesto (ejemplo: números primos en frames, Morse, etc.)
+    std::string DetectPalimpsesto(const std::vector<float>& iq);
+
+    // Cambiar modo operativo
+    void SetModeRestrictivo(bool restrictivo);
+    bool GetModeRestrictivo();
 
 private:
-	
-	void WorkerFunction();
-	std::thread* m_worker;
-	std::mutex m_lock;
-	SDRunoPlugin_TemplateUi m_form;
+    SDRunoPlugin_TemplateForm m_form;
+    std::ofstream logFile;
+    std::vector<float> refSignal;
+    bool haveRef;
+    bool modoRestrictivo; // true = restrictivo, false = funcional-libre
+
+    void UpdateReference(const std::vector<float>& iq);
 };
