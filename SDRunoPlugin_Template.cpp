@@ -3,10 +3,11 @@
 #include <numeric>
 #include <iostream>
 
+// CORREGIDO: Usar canal explícito en RegisterStreamObserver (canal 0 por defecto)
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller), m_form(*this, controller), haveRef(false), modoRestrictivo(true)
 {
-    controller.RegisterStreamObserver(this);
+    controller.RegisterStreamObserver(0, this); // canal 0, puedes cambiar si es necesario
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
 }
@@ -15,11 +16,16 @@ SDRunoPlugin_Template::~SDRunoPlugin_Template() {
     if (logFile.is_open()) logFile.close();
 }
 
-void SDRunoPlugin_Template::StreamUpdate(float* IQBuffer, int length, bool overload, bool hasAGCEvent) {
-    // Convert IQBuffer to vector
-    std::vector<float> iq(IQBuffer, IQBuffer + length);
+// CORREGIDO: El método virtual correcto del observer
+void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
+    // Convert buffer to IQ vector
+    std::vector<float> iq;
+    iq.reserve(length * 2);
+    for (int i = 0; i < length; ++i) {
+        iq.push_back((float)buffer[i].real());
+        iq.push_back((float)buffer[i].imag());
+    }
 
-    // Actualiza referencia si no existe (puedes mejorar esto)
     if (!haveRef) {
         UpdateReference(iq);
         haveRef = true;
@@ -32,7 +38,6 @@ void SDRunoPlugin_Template::StreamUpdate(float* IQBuffer, int length, bool overl
 
     std::string palimpsestoMsg = DetectPalimpsesto(iq);
 
-    // Modo restrictivo/funcional-libre: decide si mostrar dudas/disenso
     std::string msg;
     if (!modoRestrictivo) {
         if (lf > 0.5f && rde > 0.3f) {
@@ -60,7 +65,7 @@ float SDRunoPlugin_Template::CalculateRC(const std::vector<float>& iq) {
         float Q = iq[2 * i + 1];
         float mag = sqrt(I * I + Q * Q);
         total += mag;
-        if (i > N * 3 / 4) band += mag; // fuera de banda: último 1/4
+        if (i > N * 3 / 4) band += mag;
     }
     if (total == 0.0f) return 0.0f;
     return band / total;
@@ -89,7 +94,6 @@ float SDRunoPlugin_Template::CalculateRDE(float rc, float inr) {
     return rc * inr;
 }
 
-// --------- LOGGING ---------
 void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg) {
     if (logFile.is_open()) {
         logFile << rc << "," << inr << "," << lf << "," << rde << ",\"" << msg << "\"\n";
@@ -97,17 +101,14 @@ void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde,
     }
 }
 
-// --------- REFERENCE SIGNAL ---------
 void SDRunoPlugin_Template::UpdateReference(const std::vector<float>& iq) {
     refSignal = iq;
 }
 
-// --------- PALIMPSESTO DETECTION (Ejemplo: busca picos en frames primos) ---------
 std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& iq) {
     size_t N = iq.size() / 2;
     int nPrimos = 0, nPicosEnPrimos = 0;
     for (size_t i = 2; i < N; ++i) {
-        // test primalidad
         bool primo = true;
         for (size_t d = 2; d * d <= i; ++d) if (i % d == 0) { primo = false; break; }
         if (primo) {
@@ -123,7 +124,6 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
     return "";
 }
 
-// --------- MODO OPERATIVO ---------
 void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
     modoRestrictivo = restrictivo;
 }
