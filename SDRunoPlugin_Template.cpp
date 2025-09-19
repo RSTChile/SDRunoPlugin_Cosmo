@@ -3,11 +3,10 @@
 #include <numeric>
 #include <iostream>
 
-// CORREGIDO: Usar canal explícito en RegisterStreamObserver (canal 0 por defecto)
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller), m_form(*this, controller), haveRef(false), modoRestrictivo(true)
 {
-    controller.RegisterStreamObserver(0, this); // canal 0, puedes cambiar si es necesario
+    controller.RegisterStreamObserver(0, this);
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
 }
@@ -16,9 +15,7 @@ SDRunoPlugin_Template::~SDRunoPlugin_Template() {
     if (logFile.is_open()) logFile.close();
 }
 
-// CORREGIDO: El método virtual correcto del observer
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
-    // Convert buffer to IQ vector
     std::vector<float> iq;
     iq.reserve(length * 2);
     for (int i = 0; i < length; ++i) {
@@ -54,8 +51,6 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
     m_form.UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
     LogMetrics(rc, inr, lf, rde, msg);
 }
-
-// --------- MÉTRICAS COSMOSEMIÓTICAS ---------
 
 float SDRunoPlugin_Template::CalculateRC(const std::vector<float>& iq) {
     size_t N = iq.size() / 2;
