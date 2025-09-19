@@ -11,35 +11,35 @@
 #include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateForm.h"
 
-// Ui constructor - load the Ui control directly (NO thread)
+// Ui constructor - carga la ventana principal (sin thread)
 SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller) :
 	m_parent(parent),
 	m_form(nullptr),
 	m_controller(controller)
 {
-	// NO thread: llama ShowUi() directamente
 	ShowUi();
 }
 
-// Ui destructor (seguro, sin nana::API::exit_all ni join)
+// Ui destructor: cierra todas las ventanas Nana de forma segura
 SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
-{	
-	// Si la ventana existe, ciérrala
+{
+	// Cierra el formulario principal si existe
 	if (m_form) {
-		m_form->close(); // <--- CORRECCIÓN AQUÍ
+		m_form->close();
 	}
+	// Fuerza que todos los bucles nana::exec() terminen y cierra cualquier ventana restante (incluye Settings)
+	nana::API::exit_all();
 }
 
-// Show and execute the form
+// Mostrar y ejecutar el formulario principal
 void SDRunoPlugin_TemplateUi::ShowUi()
-{	
+{
 	std::lock_guard<std::mutex> guard(m_lock);
 	m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
 	m_form->Run();
 }
 
-// Load X from the ini file (if exists)
-// TODO: Change Template to plugin name
+// Leer X de la ini (si existe)
 int SDRunoPlugin_TemplateUi::LoadX()
 {
 	std::string tmp;
@@ -51,8 +51,7 @@ int SDRunoPlugin_TemplateUi::LoadX()
 	return stoi(tmp);
 }
 
-// Load Y from the ini file (if exists)
-// TODO: Change Template to plugin name
+// Leer Y de la ini (si existe)
 int SDRunoPlugin_TemplateUi::LoadY()
 {
 	std::string tmp;
@@ -64,8 +63,7 @@ int SDRunoPlugin_TemplateUi::LoadY()
 	return stoi(tmp);
 }
 
-// Handle events from SDRuno
-// TODO: code what to do when receiving relevant events
+// Manejo de eventos desde SDRuno (incluye Unload Plugin y Shutdown)
 void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 {
 	switch (ev.GetType())
@@ -80,7 +78,12 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 		break;
 
 	case UnoEvent::ClosingDown:
-		FormClosed();
+		// Al cerrar SDRuno, cerrar la UI y terminar Nana
+		if (m_form) {
+			m_form->close();
+		}
+		nana::API::exit_all();
+		FormClosed(); // Solicita descargar el plugin
 		break;
 
 	default:
@@ -88,7 +91,7 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 	}
 }
 
-// Required to make sure the plugin is correctly unloaded when closed
+// Asegura que el plugin se descarga correctamente cuando se cierra
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
 	m_controller.RequestUnload(&m_parent);
