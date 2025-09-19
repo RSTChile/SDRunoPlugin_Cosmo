@@ -63,41 +63,89 @@ jobs:
         shell: pwsh
         run: |
           $target = 'nana/build/bin/nana_v141_Release_x86.lib'
-          if (Test-Path $target) {
-            Write-Host "Target Nana lib already present at: $target"
+          $targetFull = [System.IO.Path]::GetFullPath((Join-Path $PWD $target))
+          if (Test-Path $targetFull) {
+            Write-Host "Target Nana lib already present at: $targetFull"
           } else {
-            $lib = Get-ChildItem -Path 'nana/build/bin' -Filter '*.lib' -Recurse | Select-Object -First 1
-            if (-not $lib) { throw "Nana .lib not found after extraction." }
-            New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
-            Copy-Item $lib.FullName $target -Force
-            Write-Host "Copied Nana lib from: $($lib.FullName) to: $target"
+            $libs = Get-ChildItem -Path 'nana/build/bin' -Filter '*.lib' -Recurse
+            if (-not $libs) { throw "Nana .lib not found after extraction." }
+            $src = $libs | Select-Object -First 1
+            $srcFull = [System.IO.Path]::GetFullPath($src.FullName)
+            Write-Host "Source Nana lib: $srcFull"
+            New-Item -ItemType Directory -Force -Path (Split-Path $targetFull) | Out-Null
+            if ($srcFull -ieq $targetFull) {
+              Write-Host "Source and target are the same file. Skipping copy."
+            } else {
+              Copy-Item $srcFull $targetFull -Force
+              Write-Host "Copied Nana lib to: $targetFull"
+            }
           }
+
+      - name: Generate C++17 props to force compile flags
+        id: gen_props
+        shell: pwsh
+        run: |
+          $propsPath = Join-Path $env:GITHUB_WORKSPACE 'ci\cpp17.props'
+          New-Item -ItemType Directory -Force -Path (Split-Path $propsPath) | Out-Null
+          @"
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <PreprocessorDefinitions>STD_FILESYSTEM_FORCE;_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalOptions>/Zc:__cplusplus %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalIncludeDirectories>include;nana\include;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <AdditionalDependencies>nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+</Project>
+"@ | Set-Content -Path $propsPath -Encoding UTF8
+          "props_path=$propsPath" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Created props: $propsPath"
 
       - name: Build project
         shell: cmd
         env:
           CL: /std:c++17 /Zc:__cplusplus /DSTD_FILESYSTEM_FORCE /D_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING
         run: |
+          echo CL env is: %CL%
           msbuild SDRunoPlugin_Template.vcxproj ^
             /p:Configuration=Release ^
             /p:Platform=${{ env.PLATFORM }} ^
             /p:PlatformToolset=v143 ^
             /p:WindowsTargetPlatformVersion=${{ steps.detect_sdk.outputs.win_sdk }} ^
-            /p:AdditionalIncludeDirectories="include;nana\include" ^
-            /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
+            /p:LanguageStandard=stdcpp17 ^
+            /p:ForceImportBeforeCppTargets="${{ steps.gen_props.outputs.props_path }}"
+
+      - name: Inspect build outputs
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "Listing Release and Win32/Release folders (if exist):"
+          if (Test-Path 'Release') { Get-ChildItem -Path 'Release' -Recurse -File | Select-Object FullName, Length }
+          if (Test-Path 'Win32\Release') { Get-ChildItem -Path 'Win32\Release' -Recurse -File | Select-Object FullName, Length }
+          if (Test-Path "$env:PLATFORM\Release") { Get-ChildItem -Path "$env:PLATFORM\Release" -Recurse -File | Select-Object FullName, Length }
 
       - name: Package artifacts
         shell: pwsh
         run: |
           New-Item -Type Directory -Force -Path artifacts | Out-Null
-          $dll = Get-ChildItem -Path . -Recurse -Filter 'Cosmo.dll' | Select-Object -First 1
-          if (-not $dll) { throw "Cosmo.dll not found after build." }
-          Copy-Item $dll.FullName artifacts\Cosmo.dll -Force
-          Compress-Archive -Path artifacts\Cosmo.dll -DestinationPath ("artifacts\Cosmo-" + $env:GITHUB_SHA + ".zip") -Force
+          $dll = Get-ChildItem -Path . -Recurse -Filter 'SDRunoPlugin_Cosmo.dll' | Select-Object -First 1
+          if (-not $dll) {
+            Write-Host "SDRunoPlugin_Cosmo.dll not found. Available DLLs under Release folders:"
+            if (Test-Path 'Release') { Get-ChildItem -Path 'Release' -Filter *.dll -Recurse | Select-Object FullName }
+            if (Test-Path 'Win32\Release') { Get-ChildItem -Path 'Win32\Release' -Filter *.dll -Recurse | Select-Object FullName }
+            if (Test-Path "$env:PLATFORM\Release") { Get-ChildItem -Path "$env:PLATFORM\Release" -Filter *.dll -Recurse | Select-Object FullName }
+            throw "SDRunoPlugin_Cosmo.dll not found after build."
+          }
+          Copy-Item $dll.FullName artifacts\SDRunoPlugin_Cosmo.dll -Force
+          Compress-Archive -Path artifacts\SDRunoPlugin_Cosmo.dll -DestinationPath ("artifacts\SDRunoPlugin_Cosmo-" + $env:GITHUB_SHA + ".zip") -Force
           Write-Host "Packaged:"; Get-ChildItem artifacts
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: Cosmo-build-${{ github.sha }}
+          name: SDRunoPlugin_Cosmo-build-${{ github.sha }}
           path: artifacts/
