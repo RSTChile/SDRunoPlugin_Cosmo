@@ -5,7 +5,7 @@
 #include <iunoplugincontroller.h>
 #include "SDRunoPlugin_TemplateForm.h"
 #include <vector>
-#include <string>       // <-- CORREGIDO: Agregado para std::string
+#include <string>
 #include <fstream>
 #include <cmath>
 
@@ -14,7 +14,6 @@ public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
 
-    // CORREGIDO: Sobrescribe el método virtual correcto
     void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 
     void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
