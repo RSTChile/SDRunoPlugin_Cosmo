@@ -1,0 +1,44 @@
+name: Build
+
+on:
+  push:
+    branches: [ main, 'copilot/**' ]
+  pull_request:
+    branches: [ main ]
+
+env:
+  PLATFORM: Win32
+
+jobs:
+  build:
+    runs-on: windows-2022
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Extract Nana library
+      run: |
+        cd nana/build/bin
+        7z x nana_v141_Release_x86.zip
+      shell: cmd
+
+    - name: Build project
+      run: |
+        msbuild SDRunoPlugin_Template.vcxproj /p:Configuration=Release /p:Platform=${{ env.PLATFORM }} /p:PlatformToolset=v143 /p:AdditionalIncludeDirectories="include;nana\include" /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
+      shell: cmd
+
+    - name: Package artifacts
+      run: |
+        mkdir artifacts
+        copy Release\Cosmo.dll artifacts\ 2>nul || copy ${{ env.PLATFORM }}\Release\Cosmo.dll artifacts\ 2>nul || echo "DLL not found in expected location"
+        7z a artifacts\Cosmo-${{ github.sha }}.zip Release\*.dll 2>nul || 7z a artifacts\Cosmo-${{ github.sha }}.zip ${{ env.PLATFORM }}\Release\*.dll 2>nul || echo "No DLLs to package"
+      shell: cmd
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v3
+      with:
+        name: Cosmo-build-${{ github.sha }}
+        path: artifacts/
