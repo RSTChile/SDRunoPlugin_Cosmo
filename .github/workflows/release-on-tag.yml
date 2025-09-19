@@ -11,10 +11,10 @@ jobs:
     runs-on: windows-latest
     env:
       CONFIG: Release
-      PLATFORM: Win32
+      PLATFORM: x86
       ARTIFACT_DIR: artifacts
-      DIST_DIR: installer\\dist
-      INSTALLER_OUT: installer\\output
+      DIST_DIR: installer\dist
+      INSTALLER_OUT: installer\output
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -30,7 +30,7 @@ jobs:
             Expand-Archive -Path $zip -DestinationPath (Split-Path $zip) -Force
           }
 
-      - name: Build solution (Win32 Release)
+      - name: Build solution (x86 Release)
         shell: cmd
         run: >
           msbuild SDRunoPlugin_Template.sln
@@ -75,7 +75,7 @@ jobs:
             @"\
             Manual installation instructions for Cosmo (SDRuno Plugin)\
             1) Close SDRuno.\
-            2) Copy Cosmo.dll into: C:\\Program Files (x86)\\SDRplay\\SDRuno\\Plugins\
+            2) Copy Cosmo.dll into: C:\Program Files (x86)\SDRplay\SDRuno\Plugins\
             3) Start SDRuno and enable the plugin.\
             "@ | Out-File -FilePath (Join-Path $PWD "packaging/README_INSTALL.txt") -Encoding utf8 -Force
           }
@@ -93,7 +93,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path $env:INSTALLER_OUT | Out-Null
           $version = "${{ github.ref_name }}"
-          & "C:\\Program Files (x86)\\Inno Setup 6\\ISCC.exe" "installer/Cosmo.iss" /DMySourceDir="$PWD/$env:DIST_DIR" /DMyAppVersion=$version /DMyOutputDir="$PWD/$env:INSTALLER_OUT"
+          & "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "installer/Cosmo.iss" /DMySourceDir="$PWD/$env:DIST_DIR" /DMyAppVersion=$version /DMyOutputDir="$PWD/$env:INSTALLER_OUT"
 
       - name: Create GitHub Release and upload assets
         uses: softprops/action-gh-release@v2
