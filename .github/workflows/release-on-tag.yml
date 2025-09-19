@@ -13,10 +13,22 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v4
 
     - name: Setup MSBuild
       uses: microsoft/setup-msbuild@v1.1
+
+    # Opcional: descargar Nana si no está presente en el repo
+    - name: Fetch Nana prebuilt (if not present)
+      shell: pwsh
+      env:
+        NANA_URL: ${{ secrets.NANA_URL }} # misma URL/secret que en build.yml
+      run: |
+        if (!(Test-Path 'nana/build/bin')) { New-Item -ItemType Directory -Force -Path 'nana/build/bin' | Out-Null }
+        if (!(Test-Path 'nana/build/bin/nana_v141_Release_x86.zip')) {
+          if (-not $env:NANA_URL) { throw "NANA_URL secret is not set and nana_v141_Release_x86.zip is missing." }
+          Invoke-WebRequest -Uri $env:NANA_URL -OutFile 'nana/build/bin/nana_v141_Release_x86.zip'
+        }
 
     - name: Extract Nana library
       run: |
@@ -26,7 +38,12 @@ jobs:
 
     - name: Build project
       run: |
-        msbuild SDRunoPlugin_Template.vcxproj /p:Configuration=Release /p:Platform=${{ env.PLATFORM }} /p:PlatformToolset=v143 /p:AdditionalIncludeDirectories="include;nana\include" /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
+        msbuild SDRunoPlugin_Template.vcxproj ^
+          /p:Configuration=Release ^
+          /p:Platform=${{ env.PLATFORM }} ^
+          /p:PlatformToolset=v143 ^
+          /p:AdditionalIncludeDirectories="include;nana\include" ^
+          /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
       shell: cmd
 
     - name: Package release
