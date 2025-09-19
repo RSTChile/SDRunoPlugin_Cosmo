@@ -69,7 +69,7 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
 
 	// This code sets the plugin size and title
 	size(nana::size(dialogFormWidth, dialogFormHeight));
-	caption("SDRuno Plugin Template - Settings");
+	caption("Cosmo - Settings");
 
 	// Set the forms back color to black to match SDRuno's settings dialogs
 	this->bgcolor(nana::colors::black);

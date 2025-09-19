@@ -22,7 +22,7 @@ public:
 	virtual ~SDRunoPlugin_Template();
 
 	// TODO: change the plugin title here
-	virtual const char* GetPluginName() const override { return "SDRuno Plugin Example"; }
+	virtual const char* GetPluginName() const override { return "Cosmo"; }
 
 	// IUnoPlugin
 	virtual void HandleEvent(const UnoEvent& ev) override;
