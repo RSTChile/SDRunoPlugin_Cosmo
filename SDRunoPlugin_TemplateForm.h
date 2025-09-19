@@ -14,7 +14,7 @@
 #include <iomanip>
 #include <sstream>
 #include <iunoplugincontroller.h>
-#include <string> // <-- CORREGIDO: Para std::string
+#include <string>
 
 #define topBarHeight (27)
 #define bottomBarHeight (8)
