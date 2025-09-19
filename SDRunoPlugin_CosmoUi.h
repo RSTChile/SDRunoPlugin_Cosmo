@@ -46,6 +46,10 @@ private:
 	std::shared_ptr<nana::label> m_frequencyLabel;
 	std::shared_ptr<nana::textbox> m_frequencyTextbox;
 	std::shared_ptr<nana::label> m_statusLabel;
+	std::shared_ptr<nana::label> m_gainLabel;
+	std::shared_ptr<nana::textbox> m_gainTextbox;
+	std::shared_ptr<nana::button> m_resetButton;
+	std::shared_ptr<nana::label> m_samplesLabel;
 
 	void Setup();
 	void Start();
@@ -54,4 +58,7 @@ private:
 	void OnStartClicked();
 	void OnStopClicked();
 	void OnFrequencyChanged();
+	void OnGainChanged();
+	void OnResetClicked();
+	void UpdateSampleCount(long long samples);
 };

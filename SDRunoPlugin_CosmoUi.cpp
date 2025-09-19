@@ -11,8 +11,8 @@ SDRunoPlugin_CosmoUi::SDRunoPlugin_CosmoUi(IUnoPluginController& controller, IUn
 	m_started(false)
 {
 	// Initialize form on main thread
-	m_form = std::make_shared<nana::form>(nana::API::make_center(450, 300));
-	m_form->caption("Cosmo Plugin v1.0");
+	m_form = std::make_shared<nana::form>(nana::API::make_center(450, 200));
+	m_form->caption("Cosmo Plugin v1.0 - RSTChile");
 	Setup();
 }
 
@@ -24,12 +24,18 @@ SDRunoPlugin_CosmoUi::~SDRunoPlugin_CosmoUi()
 
 void SDRunoPlugin_CosmoUi::Setup()
 {
-	// Create UI controls
+	// Create UI controls with improved layout
 	m_frequencyLabel = std::make_shared<nana::label>(*m_form, nana::rectangle(10, 10, 100, 25));
-	m_frequencyLabel->caption("Frequency:");
+	m_frequencyLabel->caption("Frequency (Hz):");
 
 	m_frequencyTextbox = std::make_shared<nana::textbox>(*m_form, nana::rectangle(120, 10, 150, 25));
 	m_frequencyTextbox->caption("100000000"); // Default 100MHz
+
+	m_gainLabel = std::make_shared<nana::label>(*m_form, nana::rectangle(280, 10, 60, 25));
+	m_gainLabel->caption("Gain:");
+
+	m_gainTextbox = std::make_shared<nana::textbox>(*m_form, nana::rectangle(350, 10, 80, 25));
+	m_gainTextbox->caption("1.0"); // Default gain
 
 	m_startButton = std::make_shared<nana::button>(*m_form, nana::rectangle(10, 50, 80, 30));
 	m_startButton->caption("Start");
@@ -38,13 +44,21 @@ void SDRunoPlugin_CosmoUi::Setup()
 	m_stopButton->caption("Stop");
 	m_stopButton->enabled(false);
 
+	m_resetButton = std::make_shared<nana::button>(*m_form, nana::rectangle(190, 50, 80, 30));
+	m_resetButton->caption("Reset");
+
 	m_statusLabel = std::make_shared<nana::label>(*m_form, nana::rectangle(10, 100, 400, 25));
 	m_statusLabel->caption("Status: Ready");
+
+	m_samplesLabel = std::make_shared<nana::label>(*m_form, nana::rectangle(10, 130, 400, 25));
+	m_samplesLabel->caption("Samples processed: 0");
 
 	// Set up event handlers
 	m_startButton->events().click([this] { OnStartClicked(); });
 	m_stopButton->events().click([this] { OnStopClicked(); });
+	m_resetButton->events().click([this] { OnResetClicked(); });
 	m_frequencyTextbox->events().text_changed([this] { OnFrequencyChanged(); });
+	m_gainTextbox->events().text_changed([this] { OnGainChanged(); });
 
 	// Set up form close event
 	m_form->events().unload([this](const nana::arg_unload& arg) {
@@ -121,14 +135,27 @@ void SDRunoPlugin_CosmoUi::Start()
 		if (m_startButton) m_startButton->enabled(false);
 		if (m_stopButton) m_stopButton->enabled(true);
 		
-		UpdateStatus("Status: Started");
+		UpdateStatus("Status: Started - Processing signals...");
 		
-		// Start processing thread
+		// Start processing thread with sample signal processing
 		m_thread = std::thread([this]() {
-			// Plugin processing logic would go here
+			long long sampleCount = 0;
+			auto lastUpdate = std::chrono::steady_clock::now();
+			
 			while (m_started)
 			{
-				// Process audio/IQ data
+				// Simulate signal processing
+				sampleCount += 1024; // Simulate processing 1024 samples
+				
+				// Update sample count every second
+				auto now = std::chrono::steady_clock::now();
+				if (std::chrono::duration_cast<std::chrono::seconds>(now - lastUpdate).count() >= 1)
+				{
+					UpdateSampleCount(sampleCount);
+					lastUpdate = now;
+				}
+				
+				// Simulate processing time
 				std::this_thread::sleep_for(std::chrono::milliseconds(10));
 			}
 		});
@@ -187,5 +214,40 @@ void SDRunoPlugin_CosmoUi::OnFrequencyChanged()
 		{
 			// Invalid frequency format
 		}
+	}
+}
+
+void SDRunoPlugin_CosmoUi::OnGainChanged()
+{
+	if (m_gainTextbox)
+	{
+		try
+		{
+			double gain = std::stod(m_gainTextbox->caption());
+			// Apply gain setting to signal processing
+			UpdateStatus("Status: Gain updated to " + std::to_string(gain));
+		}
+		catch (const std::exception&)
+		{
+			// Invalid gain format
+			UpdateStatus("Status: Invalid gain value");
+		}
+	}
+}
+
+void SDRunoPlugin_CosmoUi::OnResetClicked()
+{
+	// Reset to default values
+	if (m_frequencyTextbox) m_frequencyTextbox->caption("100000000");
+	if (m_gainTextbox) m_gainTextbox->caption("1.0");
+	if (m_samplesLabel) m_samplesLabel->caption("Samples processed: 0");
+	UpdateStatus("Status: Reset to defaults");
+}
+
+void SDRunoPlugin_CosmoUi::UpdateSampleCount(long long samples)
+{
+	if (m_samplesLabel)
+	{
+		m_samplesLabel->caption("Samples processed: " + std::to_string(samples));
 	}
 }

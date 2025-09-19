@@ -1,0 +1,29 @@
+{
+  "plugin": {
+    "name": "Cosmo Plugin",
+    "id": "RSTChile.SDRunoPlugin.Cosmo",
+    "version": "1.0.0",
+    "vendor": "RSTChile",
+    "description": "SDRuno Cosmo Plugin for advanced signal processing",
+    "author": "RSTChile Development Team",
+    "website": "https://github.com/RSTChile/SDRunoPlugin_Cosmo",
+    "license": "GPL v3",
+    "compatibility": {
+      "sdruno_version": "1.4+",
+      "api_version": 1,
+      "platforms": ["Windows x64", "Windows x86"]
+    },
+    "features": {
+      "has_gui": true,
+      "has_settings": true,
+      "processes_iq": true,
+      "processes_audio": false,
+      "real_time": true
+    },
+    "requirements": {
+      "minimum_ram": "512MB",
+      "cpu_architecture": ["x86", "x64"],
+      "dependencies": ["nana", "vcredist"]
+    }
+  }
+}
