@@ -49,9 +49,9 @@ END
 // Bitmap
 //
 
-IDB_BG_BORDER           BITMAP                  "..\\resources\\winback.bmp"
+IDB_BG_BORDER           BITMAP                  "resources\\winback.bmp"
 
-IDB_BACKGROUND          BITMAP                  "..\\resources\\sp_blue_back.bmp"
+IDB_BACKGROUND          BITMAP                  "resources\\sp_blue_back.bmp"
 
 #endif    // English (United Kingdom) resources
 /////////////////////////////////////////////////////////////////////////////
@@ -67,19 +67,19 @@ LANGUAGE LANG_ENGLISH, SUBLANG_ENGLISH_CAN
 // Bitmap
 //
 
-IDB_CLOSE               BITMAP                  "..\\resources\\X_BUT.bmp"
+IDB_CLOSE               BITMAP                  "resources\\X_BUT.bmp"
 
-IDB_CLOSE_DOWN          BITMAP                  "..\\resources\\X_BUT_HIT.bmp"
+IDB_CLOSE_DOWN          BITMAP                  "resources\\X_BUT_HIT.bmp"
 
-IDB_MIN                 BITMAP                  "..\\resources\\MIN_BUT.bmp"
+IDB_MIN                 BITMAP                  "resources\\MIN_BUT.bmp"
 
-IDB_MIN_DOWN            BITMAP                  "..\\resources\\MIN_BUT_HIT.bmp"
+IDB_MIN_DOWN            BITMAP                  "resources\\MIN_BUT_HIT.bmp"
 
-IDB_SETT                BITMAP                  "..\\resources\\SETT.bmp"
+IDB_SETT                BITMAP                  "resources\\SETT.bmp"
 
-IDB_SETT_DOWN           BITMAP                  "..\\resources\\SETT_OVER.bmp"
+IDB_SETT_DOWN           BITMAP                  "resources\\SETT_OVER.bmp"
 
-IDB_HEADER              BITMAP                  "..\\resources\\HEADER.dib"
+IDB_HEADER              BITMAP                  "resources\\HEADER.dib"
 
 #endif    // English (Canada) resources
 /////////////////////////////////////////////////////////////////////////////
