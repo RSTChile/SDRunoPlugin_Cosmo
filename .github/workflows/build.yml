@@ -92,7 +92,6 @@ jobs:
           Write-Host "Listing candidate output folders:"
           if (Test-Path 'Release') { Get-ChildItem -Path 'Release' -Recurse -File | Select-Object FullName, Length }
           if (Test-Path 'Win32\Release') { Get-ChildItem -Path 'Win32\Release' -Recurse -File | Select-Object FullName, Length }
-          if (Test-Path "$env:PLATFORM\Release") { Get-ChildItem -Path "$env:PLATFORM\Release" -Recurse -File | Select-Object FullName, Length }
 
       - name: Package artifacts
         shell: pwsh
@@ -100,13 +99,19 @@ jobs:
           New-Item -Type Directory -Force -Path artifacts | Out-Null
           $dll = Get-ChildItem -Path . -Recurse -Filter 'SDRunoPlugin_Cosmo.dll' | Select-Object -First 1
           if (-not $dll) {
-            Write-Host "SDRunoPlugin_Cosmo.dll not found. Listing DLLs under Release folders:"
-            if (Test-Path 'Release') { Get-ChildItem -Path 'Release' -Filter *.dll -Recurse | Select-Object FullName }
-            if (Test-Path 'Win32\Release') { Get-ChildItem -Path 'Win32\Release' -Filter *.dll -Recurse | Select-Object FullName }
-            if (Test-Path "$env:PLATFORM\Release") { Get-ChildItem -Path "$env:PLATFORM\Release" -Filter *.dll -Recurse | Select-Object FullName }
-            throw "SDRunoPlugin_Cosmo.dll not found after build."
+            $fallback = Get-ChildItem -Path . -Recurse -Filter 'SDRunoPlugin_Template.dll' | Select-Object -First 1
+            if ($fallback) {
+              Write-Host "Fallback: renaming SDRunoPlugin_Template.dll -> SDRunoPlugin_Cosmo.dll"
+              Copy-Item $fallback.FullName artifacts\SDRunoPlugin_Cosmo.dll -Force
+            } else {
+              Write-Host "DLL not found. Available DLLs under Release folders:"
+              if (Test-Path 'Release') { Get-ChildItem -Path 'Release' -Filter *.dll -Recurse | Select-Object FullName }
+              if (Test-Path 'Win32\Release') { Get-ChildItem -Path 'Win32\Release' -Filter *.dll -Recurse | Select-Object FullName }
+              throw "Plugin DLL not found after build."
+            }
+          } else {
+            Copy-Item $dll.FullName artifacts\SDRunoPlugin_Cosmo.dll -Force
           }
-          Copy-Item $dll.FullName artifacts\SDRunoPlugin_Cosmo.dll -Force
           Compress-Archive -Path artifacts\SDRunoPlugin_Cosmo.dll -DestinationPath ("artifacts\SDRunoPlugin_Cosmo-" + $env:GITHUB_SHA + ".zip") -Force
           Write-Host "Packaged:"; Get-ChildItem artifacts
 
