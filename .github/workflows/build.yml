@@ -2,9 +2,12 @@ name: Build
 
 on:
   push:
-    branches: [ main, 'copilot/**' ]
+    branches:
+      - main
+      - 'copilot/**'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
 
 env:
   PLATFORM: Win32
@@ -14,68 +17,82 @@ jobs:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.1
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
 
-    - name: Detect installed Windows SDK version
-      id: detect_sdk
-      shell: pwsh
-      run: |
-        $includeDir = 'C:\Program Files (x86)\Windows Kits\10\Include'
-        $versions = @()
-        if (Test-Path $includeDir) {
-          $versions = Get-ChildItem -Path $includeDir -Directory |
-            Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
-            Select-Object -ExpandProperty Name
-        }
-        if ($versions.Count -gt 0) {
-          $sdk = $versions | Sort-Object {[Version]$_} -Descending | Select-Object -First 1
-        } else {
-          $sdk = '10.0.22621.0'
-        }
-        "win_sdk=$sdk" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        Write-Host "Using Windows SDK: $sdk"
+      - name: Detect installed Windows SDK version
+        id: detect_sdk
+        shell: pwsh
+        run: |
+          $includeDir = 'C:\Program Files (x86)\Windows Kits\10\Include'
+          $versions = @()
+          if (Test-Path $includeDir) {
+            $versions = Get-ChildItem -Path $includeDir -Directory |
+              Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+              Select-Object -ExpandProperty Name
+          }
+          if ($versions.Count -gt 0) {
+            $sdk = $versions | Sort-Object {[Version]$_} -Descending | Select-Object -First 1
+          } else {
+            $sdk = '10.0.22621.0'
+          }
+          "win_sdk=$sdk" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Using Windows SDK: $sdk"
 
-    - name: Verify Nana ZIP exists in repo
-      shell: pwsh
-      run: |
-        if (!(Test-Path 'nana/build/bin/nana_v141_Release_x86.zip')) {
-          Write-Error 'nana/build/bin/nana_v141_Release_x86.zip not found'
-          exit 1
-        }
-        Get-ChildItem -Path 'nana/build/bin' -Recurse
+      - name: Verify Nana ZIP exists in repo
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'nana/build/bin/nana_v141_Release_x86.zip')) {
+            Write-Error 'nana/build/bin/nana_v141_Release_x86.zip not found'
+            exit 1
+          }
+          Write-Host "Nana ZIP found. Listing nana/build/bin:"
+          Get-ChildItem -Path 'nana/build/bin' -Recurse
 
-    - name: Extract Nana library (PowerShell)
-      shell: pwsh
-      run: |
-        Expand-Archive -Path 'nana/build/bin/nana_v141_Release_x86.zip' -DestinationPath 'nana/build/bin' -Force
-        Write-Host 'After extraction:'
-        Get-ChildItem -Path 'nana/build/bin' -Filter *.lib
+      - name: Extract Nana library (PowerShell)
+        shell: pwsh
+        run: |
+          Expand-Archive -Path 'nana/build/bin/nana_v141_Release_x86.zip' -DestinationPath 'nana/build/bin' -Force
+          Write-Host 'After extraction (.lib files):'
+          Get-ChildItem -Path 'nana/build/bin' -Filter *.lib -Recurse
 
-    - name: Build project
-      shell: cmd
-      run: |
-        msbuild SDRunoPlugin_Template.vcxproj ^
-          /p:Configuration=Release ^
-          /p:Platform=${{ env.PLATFORM }} ^
-          /p:PlatformToolset=v143 ^
-          /p:WindowsTargetPlatformVersion=${{ steps.detect_sdk.outputs.win_sdk }} ^
-          /p:LanguageStandard=stdcpp17 ^
-          /p:PreprocessorDefinitions="_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING;STD_FILESYSTEM_FORCE;%(PreprocessorDefinitions)" ^
-          /p:AdditionalIncludeDirectories="include;nana\include" ^
-          /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
+      - name: Normalize Nana lib path
+        shell: pwsh
+        run: |
+          $target = 'nana/build/bin/nana_v141_Release_x86.lib'
+          $lib = Get-ChildItem -Path 'nana/build/bin' -Filter '*.lib' -Recurse | Select-Object -First 1
+          if (-not $lib) { throw "Nana .lib not found after extraction." }
+          New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+          Copy-Item $lib.FullName $target -Force
+          Write-Host "Using Nana lib at: $target"
 
-    - name: Package artifacts
-      shell: cmd
-      run: |
-        mkdir artifacts
-        copy Release\Cosmo.dll artifacts\ 2>nul || copy ${{ env.PLATFORM }}\Release\Cosmo.dll artifacts\ 2>nul || echo "DLL not found in expected location"
-        7z a artifacts\Cosmo-${{ github.sha }}.zip Release\*.dll 2>nul || 7z a artifacts\Cosmo-${{ github.sha }}.zip ${{ env.PLATFORM }}\Release\*.dll 2>nul || echo "No DLLs to package"
+      - name: Build project
+        shell: cmd
+        run: |
+          msbuild SDRunoPlugin_Template.vcxproj ^
+            /p:Configuration=Release ^
+            /p:Platform=${{ env.PLATFORM }} ^
+            /p:PlatformToolset=v143 ^
+            /p:WindowsTargetPlatformVersion=${{ steps.detect_sdk.outputs.win_sdk }} ^
+            /p:AdditionalOptions="/std:c++17 /Zc:__cplusplus /DSTD_FILESYSTEM_FORCE /D_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING %(AdditionalOptions)" ^
+            /p:AdditionalIncludeDirectories="include;nana\include" ^
+            /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
 
-    - name: Upload artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: Cosmo-build-${{ github.sha }}
-        path: artifacts/
+      - name: Package artifacts
+        shell: pwsh
+        run: |
+          New-Item -Type Directory -Force -Path artifacts | Out-Null
+          $dll = Get-ChildItem -Path . -Recurse -Filter 'Cosmo.dll' | Select-Object -First 1
+          if (-not $dll) { throw "Cosmo.dll not found after build." }
+          Copy-Item $dll.FullName artifacts\Cosmo.dll -Force
+          Compress-Archive -Path artifacts\Cosmo.dll -DestinationPath ("artifacts\Cosmo-" + $env:GITHUB_SHA + ".zip") -Force
+          Write-Host "Packaged:"; Get-ChildItem artifacts
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cosmo-build-${{ github.sha }}
+          path: artifacts/
