@@ -6,12 +6,15 @@ on:
       - 'v*'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   release:
-    runs-on: windows-latest
+    runs-on: windows-2022
     env:
       CONFIG: Release
-      PLATFORM: Win32
+      PLATFORM: x86
       ARTIFACT_DIR: artifacts
       DIST_DIR: installer\dist
       INSTALLER_OUT: installer\output
@@ -33,7 +36,7 @@ jobs:
             Write-Host "No prebuilt Nana zip found. Continuing..."
           }
 
-      - name: Build solution (Win32 Release, v143)
+      - name: Build solution (Release, Platform=x86, v143)
         shell: cmd
         run: >
           msbuild "SDRunoPlugin_Template.sln"
@@ -61,14 +64,10 @@ jobs:
 
           if ($dlls.Count -eq 0) { throw "No DLLs found in expected output folders." }
 
-          # Look for SDRunoPlugin_Template.dll first, then Cosmo.dll, then any dll
           $targetDll = $dlls | Where-Object { $_.Name -ieq 'SDRunoPlugin_Template.dll' } | Select-Object -First 1
           if ($null -eq $targetDll) { $targetDll = $dlls | Where-Object { $_.Name -ieq 'Cosmo.dll' } | Select-Object -First 1 }
           if ($null -eq $targetDll) { $targetDll = $dlls | Select-Object -First 1 }
 
-          Write-Host "Found DLL: $($targetDll.FullName)"
-
-          # Copy as Cosmo.dll for the plugin
           Copy-Item $targetDll.FullName -Destination (Join-Path $env:ARTIFACT_DIR "Cosmo.dll") -Force
           Copy-Item (Join-Path $env:ARTIFACT_DIR "Cosmo.dll") -Destination (Join-Path $env:DIST_DIR "Cosmo.dll") -Force
 
