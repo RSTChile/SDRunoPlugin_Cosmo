@@ -1,0 +1,60 @@
+# Build artifacts
+bin/
+build/
+Debug/
+Release/
+x64/
+x86/
+.vs/
+*.vcxproj.user
+*.suo
+*.user
+*.aps
+*.pch
+*.vspscc
+*.vssscc
+*_i.c
+*_p.c
+*.ncb
+*.tlb
+*.tlh
+*.bak
+*.cache
+*.ilk
+*.log
+[Dd]ebug*/
+*.sbr
+*.sdf
+*.opensdf
+*.lib
+*.pdb
+*.idb
+*.obj
+*.tlog
+*.lastbuildstate
+*.unsuccessfulbuild
+*.ipch
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+*.swp
+*.swo
+.vscode/
+.idea/
+
+# Dependencies (if using vcpkg or similar)
+vcpkg_installed/
+packages/
