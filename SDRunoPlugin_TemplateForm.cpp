@@ -18,7 +18,6 @@ void SDRunoPlugin_TemplateForm::Setup() {
 	title_bar_label.size(nana::size(160, 18));
 
 	versionLbl.caption("v1.0");
-	// CORREGIDO: Cambia el segundo argumento a nana::align_v::center
 	versionLbl.text_align(nana::align::right, nana::align_v::center);
 
 	rcLabel.caption("RC: --");
