@@ -62,11 +62,17 @@ jobs:
         shell: pwsh
         run: |
           $target = 'nana/build/bin/nana_v141_Release_x86.lib'
-          $lib = Get-ChildItem -Path 'nana/build/bin' -Filter '*.lib' -Recurse | Select-Object -First 1
-          if (-not $lib) { throw "Nana .lib not found after extraction." }
-          New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
-          Copy-Item $lib.FullName $target -Force
-          Write-Host "Using Nana lib at: $target"
+          $libs = Get-ChildItem -Path 'nana/build/bin' -Filter '*.lib' -Recurse
+          if (-not $libs) { throw "Nana .lib not found after extraction." }
+          $targetFull = [System.IO.Path]::GetFullPath((Join-Path $PWD $target))
+          $existing = $libs | Where-Object { [System.IO.Path]::GetFullPath($_.FullName) -ieq $targetFull } | Select-Object -First 1
+          if ($existing) {
+            Write-Host "Target Nana lib already present at: $target"
+          } else {
+            $lib = $libs | Select-Object -First 1
+            Copy-Item $lib.FullName $target -Force
+            Write-Host "Copied Nana lib from: $($lib.FullName) to: $target"
+          }
 
       - name: Build project
         shell: cmd
