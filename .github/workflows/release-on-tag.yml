@@ -1,0 +1,70 @@
+name: Release on Tag
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+env:
+  PLATFORM: Win32
+
+jobs:
+  release:
+    runs-on: windows-2022
+
+    steps:
+    - uses: actions/checkout@v3
+
+    - name: Setup MSBuild
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Extract Nana library
+      run: |
+        cd nana/build/bin
+        7z x nana_v141_Release_x86.zip
+      shell: cmd
+
+    - name: Build project
+      run: |
+        msbuild SDRunoPlugin_Template.vcxproj /p:Configuration=Release /p:Platform=${{ env.PLATFORM }} /p:PlatformToolset=v143 /p:AdditionalIncludeDirectories="include;nana\include" /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
+      shell: cmd
+
+    - name: Package release
+      run: |
+        mkdir release
+        copy Release\Cosmo.dll release\ 2>nul || copy ${{ env.PLATFORM }}\Release\Cosmo.dll release\ 2>nul || echo "DLL not found in expected location"
+        7z a release\Cosmo-${{ github.ref_name }}.zip Release\*.dll 2>nul || 7z a release\Cosmo-${{ github.ref_name }}.zip ${{ env.PLATFORM }}\Release\*.dll 2>nul || echo "No DLLs to package"
+      shell: cmd
+
+    - name: Create Release
+      uses: actions/create-release@v1
+      id: create_release
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        tag_name: ${{ github.ref_name }}
+        release_name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+
+    - name: Upload Release Asset - DLL
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: release/Cosmo.dll
+        asset_name: Cosmo.dll
+        asset_content_type: application/octet-stream
+      continue-on-error: true
+
+    - name: Upload Release Asset - ZIP
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: release/Cosmo-${{ github.ref_name }}.zip
+        asset_name: Cosmo-${{ github.ref_name }}.zip
+        asset_content_type: application/zip
+      continue-on-error: true
