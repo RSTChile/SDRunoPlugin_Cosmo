@@ -1,0 +1,35 @@
+# Build artifacts
+Win32/
+x64/
+Release/
+Debug/
+*.dll
+*.pdb
+*.lib
+*.obj
+*.exe
+*.ilk
+*.exp
+
+# Workflow artifacts
+artifacts/
+installer/dist/
+installer/output/
+Cosmo_Win32_Release.zip
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.sdf
+*.vcxproj.user
+
+# Temporary files
+*.tmp
+*.temp
+*~
+
+# IDE
+.vscode/
+*.swp
+*.swo

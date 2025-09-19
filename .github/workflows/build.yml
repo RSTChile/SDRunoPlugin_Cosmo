@@ -39,12 +39,13 @@ jobs:
       - name: Build solution (Win32 Release, v143)
         shell: cmd
         run: >
-          msbuild SDRunoPlugin_Template.sln
+          msbuild "SDRunoPlugin_Template.sln"
           /t:Build
           /p:Configuration=%CONFIG%
           /p:Platform=%PLATFORM%
           /p:PlatformToolset=v143
-          /m
+          /verbosity:minimal
+          /maxcpucount
 
       - name: Collect build outputs
         shell: pwsh
