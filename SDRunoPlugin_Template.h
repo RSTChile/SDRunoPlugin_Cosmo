@@ -21,8 +21,8 @@ public:
 	SDRunoPlugin_Template(IUnoPluginController& controller);
 	virtual ~SDRunoPlugin_Template();
 
-	// TODO: change the plugin title here
-	virtual const char* GetPluginName() const override { return "SDRuno Plugin Example"; }
+	// Cambia el nombre del plugin aquí
+	virtual const char* GetPluginName() const override { return "Cosmo"; }
 
 	// IUnoPlugin
 	virtual void HandleEvent(const UnoEvent& ev) override;
