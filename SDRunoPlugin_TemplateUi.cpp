@@ -17,7 +17,7 @@ SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, 
 	m_form(nullptr),
 	m_controller(controller)
 {
-	// NO thread: simplemente llama ShowUi() directamente
+	// NO thread: llama ShowUi() directamente
 	ShowUi();
 }
 
@@ -26,7 +26,7 @@ SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 {	
 	// Si la ventana existe, ciérrala
 	if (m_form) {
-		m_form->Close(); // O el método correcto para Nana
+		m_form->close(); // <--- CORRECCIÓN AQUÍ
 	}
 }
 
