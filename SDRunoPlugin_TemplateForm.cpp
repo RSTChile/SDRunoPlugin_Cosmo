@@ -90,7 +90,10 @@ void SDRunoPlugin_TemplateForm::Setup()
 	BYTE* settPixels = NULL;
 	BYTE* settoverPixels = NULL;
 	const unsigned int rawDataOffset = sizeof(BITMAPFILEHEADER) + sizeof(BITMAPINFO);
-	hModule = GetModuleHandle(L"SDRunoPlugin_Template");
+
+	// CORRECCIÓN: usar el nombre real del módulo (tu DLL) para obtener los recursos
+	hModule = GetModuleHandle(L"SDRunoPlugin_Cosmo.dll");
+
 	hdc = GetDC(NULL);
 	rc_border = FindResource(hModule, MAKEINTRESOURCE(IDB_BG_BORDER), RT_BITMAP);
 	rc_inner = FindResource(hModule, MAKEINTRESOURCE(IDB_BACKGROUND), RT_BITMAP);
