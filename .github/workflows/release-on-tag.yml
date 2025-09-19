@@ -61,6 +61,8 @@ jobs:
           /p:Platform=${{ env.PLATFORM }} ^
           /p:PlatformToolset=v143 ^
           /p:WindowsTargetPlatformVersion=${{ steps.detect_sdk.outputs.win_sdk }} ^
+          /p:LanguageStandard=stdcpp17 ^
+          /p:PreprocessorDefinitions="_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING;STD_FILESYSTEM_FORCE;%(PreprocessorDefinitions)" ^
           /p:AdditionalIncludeDirectories="include;nana\include" ^
           /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
 
