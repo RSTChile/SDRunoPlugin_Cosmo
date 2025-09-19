@@ -11,29 +11,30 @@
 #include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateForm.h"
 
-// Ui constructor - load the Ui control into a thread
+// Ui constructor - load the Ui control directly (NO thread)
 SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller) :
 	m_parent(parent),
 	m_form(nullptr),
 	m_controller(controller)
 {
-	m_thread = std::thread(&SDRunoPlugin_TemplateUi::ShowUi, this);
+	// NO thread: simplemente llama ShowUi() directamente
+	ShowUi();
 }
 
-// Ui destructor (the nana::API::exit_all();) is required if using Nana UI library
+// Ui destructor (seguro, sin nana::API::exit_all ni join)
 SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 {	
-	nana::API::exit_all();
-	m_thread.join();	
+	// Si la ventana existe, ciérrala
+	if (m_form) {
+		m_form->Close(); // O el método correcto para Nana
+	}
 }
 
 // Show and execute the form
 void SDRunoPlugin_TemplateUi::ShowUi()
 {	
-	m_lock.lock();
+	std::lock_guard<std::mutex> guard(m_lock);
 	m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
-	m_lock.unlock();
-
 	m_form->Run();
 }
 
