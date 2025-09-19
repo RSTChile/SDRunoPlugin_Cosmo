@@ -8,100 +8,117 @@ on:
 env:
   PLATFORM: Win32
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.1
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
 
-    - name: Detect installed Windows SDK version
-      id: detect_sdk
-      shell: pwsh
-      run: |
-        $includeDir = 'C:\Program Files (x86)\Windows Kits\10\Include'
-        $versions = @()
-        if (Test-Path $includeDir) {
-          $versions = Get-ChildItem -Path $includeDir -Directory |
-            Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
-            Select-Object -ExpandProperty Name
-        }
-        if ($versions.Count -gt 0) {
-          $sdk = $versions | Sort-Object {[Version]$_} -Descending | Select-Object -First 1
-        } else {
-          $sdk = '10.0.22621.0'
-        }
-        "win_sdk=$sdk" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
-        Write-Host "Using Windows SDK: $sdk"
+      - name: Detect installed Windows SDK version
+        id: detect_sdk
+        shell: pwsh
+        run: |
+          $includeDir = 'C:\Program Files (x86)\Windows Kits\10\Include'
+          $versions = @()
+          if (Test-Path $includeDir) {
+            $versions = Get-ChildItem -Path $includeDir -Directory |
+              Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+              Select-Object -ExpandProperty Name
+          }
+          if ($versions.Count -gt 0) {
+            $sdk = $versions | Sort-Object {[Version]$_} -Descending | Select-Object -First 1
+          } else {
+            $sdk = '10.0.22621.0'
+          }
+          "win_sdk=$sdk" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Using Windows SDK: $sdk"
 
-    - name: Verify Nana ZIP exists in repo
-      shell: pwsh
-      run: |
-        if (!(Test-Path 'nana/build/bin/nana_v141_Release_x86.zip')) {
-          Write-Error 'nana/build/bin/nana_v141_Release_x86.zip not found'
-          exit 1
-        }
-        Get-ChildItem -Path 'nana/build/bin' -Recurse
+      - name: Verify Nana ZIP exists in repo
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'nana/build/bin/nana_v141_Release_x86.zip')) {
+            Write-Error 'nana/build/bin/nana_v141_Release_x86.zip not found'
+            exit 1
+          }
+          Write-Host "Nana ZIP found. Listing nana/build/bin:"
+          Get-ChildItem -Path 'nana/build/bin' -Recurse
 
-    - name: Extract Nana library (PowerShell)
-      shell: pwsh
-      run: |
-        Expand-Archive -Path 'nana/build/bin/nana_v141_Release_x86.zip' -DestinationPath 'nana/build/bin' -Force
-        Write-Host 'After extraction:'
-        Get-ChildItem -Path 'nana/build/bin' -Filter *.lib
+      - name: Extract Nana library (PowerShell)
+        shell: pwsh
+        run: |
+          Expand-Archive -Path 'nana/build/bin/nana_v141_Release_x86.zip' -DestinationPath 'nana/build/bin' -Force
+          Write-Host 'After extraction (.lib files):'
+          Get-ChildItem -Path 'nana/build/bin' -Filter *.lib -Recurse
 
-    - name: Build project
-      shell: cmd
-      run: |
-        msbuild SDRunoPlugin_Template.vcxproj ^
-          /p:Configuration=Release ^
-          /p:Platform=${{ env.PLATFORM }} ^
-          /p:PlatformToolset=v143 ^
-          /p:WindowsTargetPlatformVersion=${{ steps.detect_sdk.outputs.win_sdk }} ^
-          /p:LanguageStandard=stdcpp17 ^
-          /p:PreprocessorDefinitions="_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING;STD_FILESYSTEM_FORCE;%(PreprocessorDefinitions)" ^
-          /p:AdditionalIncludeDirectories="include;nana\include" ^
-          /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
+      - name: Normalize Nana lib path
+        shell: pwsh
+        run: |
+          $target = 'nana/build/bin/nana_v141_Release_x86.lib'
+          $lib = Get-ChildItem -Path 'nana/build/bin' -Filter '*.lib' -Recurse | Select-Object -First 1
+          if (-not $lib) { throw "Nana .lib not found after extraction." }
+          New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+          Copy-Item $lib.FullName $target -Force
+          Write-Host "Using Nana lib at: $target"
 
-    - name: Package release
-      shell: cmd
-      run: |
-        mkdir release
-        copy Release\Cosmo.dll release\ 2>nul || copy ${{ env.PLATFORM }}\Release\Cosmo.dll release\ 2>nul || echo "DLL not found in expected location"
-        7z a release\Cosmo-${{ github.ref_name }}.zip Release\*.dll 2>nul || 7z a release\Cosmo-${{ github.ref_name }}.zip ${{ env.PLATFORM }}\Release\*.dll 2>nul || echo "No DLLs to package"
+      - name: Build project
+        shell: cmd
+        run: |
+          msbuild SDRunoPlugin_Template.vcxproj ^
+            /p:Configuration=Release ^
+            /p:Platform=${{ env.PLATFORM }} ^
+            /p:PlatformToolset=v143 ^
+            /p:WindowsTargetPlatformVersion=${{ steps.detect_sdk.outputs.win_sdk }} ^
+            /p:AdditionalOptions="/std:c++17 /Zc:__cplusplus /DSTD_FILESYSTEM_FORCE /D_SILENCE_EXPERIMENTAL_FILESYSTEM_DEPRECATION_WARNING %(AdditionalOptions)" ^
+            /p:AdditionalIncludeDirectories="include;nana\include" ^
+            /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
 
-    - name: Create Release
-      uses: actions/create-release@v1
-      id: create_release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
-        draft: false
-        prerelease: false
+      - name: Package release
+        shell: pwsh
+        run: |
+          New-Item -Type Directory -Force -Path release | Out-Null
+          $dll = Get-ChildItem -Path . -Recurse -Filter 'Cosmo.dll' | Select-Object -First 1
+          if (-not $dll) { throw "Cosmo.dll not found after build." }
+          Copy-Item $dll.FullName release\Cosmo.dll -Force
+          Compress-Archive -Path release\Cosmo.dll -DestinationPath ("release\Cosmo-" + "${{ github.ref_name }}" + ".zip") -Force
+          Write-Host "Release package:"; Get-ChildItem release
 
-    - name: Upload Release Asset - DLL
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release/Cosmo.dll
-        asset_name: Cosmo.dll
-        asset_content_type: application/octet-stream
-      continue-on-error: true
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
 
-    - name: Upload Release Asset - ZIP
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release/Cosmo-${{ github.ref_name }}.zip
-        asset_name: Cosmo-${{ github.ref_name }}.zip
-        asset_content_type: application/zip
-      continue-on-error: true
+      - name: Upload Release Asset - DLL
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/Cosmo.dll
+          asset_name: Cosmo.dll
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+
+      - name: Upload Release Asset - ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/Cosmo-${{ github.ref_name }}.zip
+          asset_name: Cosmo-${{ github.ref_name }}.zip
+          asset_content_type: application/zip
+        continue-on-error: true
