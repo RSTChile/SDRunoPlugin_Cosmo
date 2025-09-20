@@ -6,24 +6,23 @@
 #include <cmath>
 
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
-    : IUnoPlugin(controller), m_ui(nullptr), haveRef(false), modoRestrictivo(true)
+    : IUnoPlugin(controller), haveRef(false), modoRestrictivo(true)
 {
     controller.RegisterStreamObserver(0, this);
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
-    
-    // Initialize and show UI automatically
+
+    // Inicializa y muestra la UI automáticamente
     m_ui = new SDRunoPlugin_TemplateUi(*this, controller);
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
-    if (logFile.is_open()) logFile.close();
-    
-    // Clean up UI resources
+    // Limpieza correcta de recursos del UI manager
     if (m_ui) {
         delete m_ui;
         m_ui = nullptr;
     }
+    if (logFile.is_open()) logFile.close();
 }
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
@@ -136,6 +135,13 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
 void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
     modoRestrictivo = restrictivo;
 }
+
 bool SDRunoPlugin_Template::GetModeRestrictivo() const {
     return modoRestrictivo;
+}
+
+void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
+    if (m_ui) {
+        m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+    }
 }

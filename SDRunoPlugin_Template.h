@@ -9,6 +9,9 @@
 #include <fstream>
 #include <cmath>
 
+// Forward declaration
+class SDRunoPlugin_TemplateUi;
+
 class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
 public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
@@ -27,6 +30,9 @@ public:
 
     void SetModeRestrictivo(bool restrictivo);
     bool GetModeRestrictivo() const;
+
+    // UI Management
+    void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
 private:
     SDRunoPlugin_TemplateUi* m_ui;

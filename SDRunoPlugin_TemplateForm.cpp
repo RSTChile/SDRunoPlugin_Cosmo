@@ -1,10 +1,11 @@
 #include "SDRunoPlugin_TemplateForm.h"
 #include "SDRunoPlugin_Template.h"
+#include "SDRunoPlugin_TemplateUi.h"
 #include <sstream>
 
-SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller)
+SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller, SDRunoPlugin_TemplateUi& ui)
 	: nana::form(nana::API::make_center(formWidth, formHeight)),
-	  m_parent(parent), m_controller(controller)
+	  m_parent(parent), m_controller(controller), m_ui(ui)
 {
 	Setup();
 }
@@ -35,11 +36,17 @@ void SDRunoPlugin_TemplateForm::Setup() {
 		bool restrictivo = (modeCombo.option() == 0);
 		m_parent.SetModeRestrictivo(restrictivo);
 	});
-}
-
-void SDRunoPlugin_TemplateForm::Run() {
-	show();
-	nana::exec();
+	
+	// Settings button setup
+	settingsBtn.caption("Settings");
+	settingsBtn.events().click([this]() {
+		m_ui.ShowSettingsDialog();
+	});
+	
+	// Handle window close event to properly shut down
+	events().unload([this](const nana::arg_unload& arg) {
+		m_ui.FormClosed();
+	});
 }
 
 void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {

@@ -1,13 +1,13 @@
 #include <sstream>
 #ifdef _WIN32
 #include <Windows.h>
+#include <io.h>
+#include <shlobj.h>
 #endif
 
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include "SDRunoPlugin_TemplateUi.h"
 #include "resource.h"
-#include <io.h>
-#include <shlobj.h>
 
 // Form constructor con handles a parent y controller
 SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller) :
@@ -21,12 +21,6 @@ SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoP
 SDRunoPlugin_TemplateSettingsDialog::~SDRunoPlugin_TemplateSettingsDialog()
 {
     this->events().destroy.clear();
-}
-
-void SDRunoPlugin_TemplateSettingsDialog::Run()
-{
-    show();
-    nana::exec();
 }
 
 int SDRunoPlugin_TemplateSettingsDialog::LoadX()
@@ -49,15 +43,40 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
 {
     int posX = LoadX();
     int posY = LoadY();
-    move(posX, posY);
+    if (posX != -1 && posY != -1) {
+        move(posX, posY);
+    }
 
     size(nana::size(dialogFormWidth, dialogFormHeight));
     caption("SDRuno Plugin Cosmo - Settings");
 
-    this->bgcolor(nana::colors::black);
-
-    // NUEVO: muestra un texto para que no se vea vacío
-    infoLbl.caption("Settings de Cosmo (próximamente)");
-    infoLbl.fgcolor(nana::colors::white);
+    // SDRuno-style dark theme
+    this->bgcolor(nana::color(45, 45, 48));  // Dark gray background like SDRuno
+    
+    // Title label with larger, bold-style text
+    titleLbl.caption("Cosmo Plugin Configuration");
+    titleLbl.fgcolor(nana::color(220, 220, 220));  // Light gray text
+    titleLbl.transparent(true);
+    titleLbl.text_align(nana::align::center, nana::align_v::center);
+    
+    // Info label with settings description
+    infoLbl.caption("Settings and configuration options will be available here.");
+    infoLbl.fgcolor(nana::color(180, 180, 180));  // Slightly darker gray text
     infoLbl.transparent(true);
+    
+    // Close button with SDRuno-style appearance
+    closeBtn.caption("Close");
+    closeBtn.bgcolor(nana::color(70, 70, 73));     // Darker button background
+    closeBtn.fgcolor(nana::color(220, 220, 220));  // Light text
+    
+    // Handle close button click
+    closeBtn.events().click([this]() {
+        close();
+        m_parent.SettingsDialogClosed();
+    });
+    
+    // Handle window close event
+    events().unload([this](const nana::arg_unload& arg) {
+        m_parent.SettingsDialogClosed();
+    });
 }

@@ -3,9 +3,10 @@
 #include <memory>
 #include <mutex>
 #include "iunoplugincontroller.h"
-#include "SDRunoPlugin_TemplateForm.h"
 
 class SDRunoPlugin_Template;
+class SDRunoPlugin_TemplateForm;
+class SDRunoPlugin_TemplateSettingsDialog;
 
 // UI principal para el plugin Cosmo
 class SDRunoPlugin_TemplateUi {
@@ -15,14 +16,19 @@ public:
 
     void ShowUi();
     void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
+
     int LoadX();
     int LoadY();
     void HandleEvent(const UnoEvent& ev);
     void FormClosed();
+    void SettingsDialogClosed();
 
 private:
-    SDRunoPlugin_Template& m_parent; // CORREGIDO: referencia al plugin, no a la UI
-    std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
+    SDRunoPlugin_Template& m_parent;
+    std::shared_ptr<SDRunoPlugin_TemplateForm> m_mainForm;
+    std::shared_ptr<SDRunoPlugin_TemplateSettingsDialog> m_settingsDialog;
     IUnoPluginController& m_controller;
     std::mutex m_lock;
+
+    void StartMainLoop();
 };
