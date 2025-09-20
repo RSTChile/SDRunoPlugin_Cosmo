@@ -21,10 +21,10 @@
 
 class SDRunoPlugin_TemplateUi;
 
-class SDRunoPlugin_TemplateSettingsDialog : public nana::form
+class SDRunoPlugin_TemplateSettingsDialog : public nana::nested_form
 {
 public:
-    SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
+    SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form);
     ~SDRunoPlugin_TemplateSettingsDialog();
 
 private:
