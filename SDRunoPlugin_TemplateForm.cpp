@@ -52,10 +52,19 @@ void SDRunoPlugin_TemplateForm::Setup() {
 void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
 	std::ostringstream oss;
 	oss << std::fixed << std::setprecision(3);
-	rcLabel.caption("RC: " + oss.str() + std::to_string(rc));
-	inrLabel.caption("INR: " + oss.str() + std::to_string(inr));
-	lfLabel.caption("LF: " + oss.str() + std::to_string(lf));
-	rdeLabel.caption("RDE: " + oss.str() + std::to_string(rde));
+	
+	oss.str(""); oss.clear(); oss << "RC: " << rc;
+	rcLabel.caption(oss.str());
+	
+	oss.str(""); oss.clear(); oss << "INR: " << inr;
+	inrLabel.caption(oss.str());
+	
+	oss.str(""); oss.clear(); oss << "LF: " << lf;
+	lfLabel.caption(oss.str());
+	
+	oss.str(""); oss.clear(); oss << "RDE: " << rde;
+	rdeLabel.caption(oss.str());
+	
 	msgLabel.caption(msg);
 	if (modoRestrictivo) {
 		msgLabel.bgcolor(nana::colors::white);

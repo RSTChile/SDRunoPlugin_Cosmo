@@ -1,4 +1,5 @@
 #include <sstream>
+#include <chrono>
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
 #include <nana/gui/widgets/listbox.hpp>
@@ -31,7 +32,6 @@ SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 
 void SDRunoPlugin_TemplateUi::StartGuiThread()
 {
-	m_guiRunning = true;
 	m_guiThread = std::thread([this]() { GuiThreadMain(); });
 	
 	// Wait for GUI thread to be ready and main window created
@@ -74,6 +74,8 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
 
 void SDRunoPlugin_TemplateUi::PostToGuiThread(std::function<void()> task)
 {
+	if (m_shutdownRequested || !m_guiRunning) return;
+	
 	if (m_mainForm) {
 		nana::API::dev::affinity_execute(m_mainForm->handle(), task);
 	} else {
@@ -88,6 +90,9 @@ void SDRunoPlugin_TemplateUi::GuiThreadMain()
 	try {
 		// Create main window on GUI thread
 		CreateMainWindow();
+		
+		// Signal that GUI thread is ready
+		m_guiRunning = true;
 		
 		// Process any queued tasks before starting event loop
 		{
