@@ -6,7 +6,7 @@
 #include <cmath>
 
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
-    : IUnoPlugin(controller), haveRef(false), modoRestrictivo(true)
+    : IUnoPlugin(controller), haveRef(false), modoRestrictivo(true), m_ui(nullptr)
 {
     controller.RegisterStreamObserver(0, this);
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
@@ -17,11 +17,15 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
-    // Limpieza correcta de recursos del UI manager
+    // Unregister stream observer first
+    m_controller.UnregisterStreamObserver(0, this);
+
+    // Limpieza de recursos UI
     if (m_ui) {
         delete m_ui;
         m_ui = nullptr;
     }
+
     if (logFile.is_open()) logFile.close();
 }
 
@@ -29,8 +33,8 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
     std::vector<float> iq;
     iq.reserve(length * 2);
     for (int i = 0; i < length; ++i) {
-        iq.push_back((float)buffer[i].real);  // <- corregido, sin paréntesis
-        iq.push_back((float)buffer[i].imag);  // <- corregido, sin paréntesis
+        iq.push_back((float)buffer[i].real);
+        iq.push_back((float)buffer[i].imag);
     }
 
     if (!haveRef) {
@@ -46,7 +50,6 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
     std::string palimpsestoMsg = DetectPalimpsesto(iq);
 
     std::string msg;
-    // --- Triple check: uso correcto de la variable modoRestrictivo ---
     if (!modoRestrictivo) {
         if (lf > 0.5f && rde > 0.3f) {
             msg = "¿Y si hay un patrón oculto? NO SÉ. DISIENTO.";
@@ -143,5 +146,12 @@ bool SDRunoPlugin_Template::GetModeRestrictivo() const {
 void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
     if (m_ui) {
         m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+    }
+}
+
+// Handle events from SDRuno (including plugin unload and shutdown)
+void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
+    if (m_ui) {
+        m_ui->HandleEvent(ev);
     }
 }

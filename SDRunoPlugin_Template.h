@@ -17,6 +17,9 @@ public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
 
+    // IUnoPlugin overrides
+    void HandleEvent(const UnoEvent& ev) override;
+
     void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 
     void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
