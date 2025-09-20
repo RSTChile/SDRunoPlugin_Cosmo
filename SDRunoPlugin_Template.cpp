@@ -20,8 +20,8 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
     std::vector<float> iq;
     iq.reserve(length * 2);
     for (int i = 0; i < length; ++i) {
-        iq.push_back((float)buffer[i].real());
-        iq.push_back((float)buffer[i].imag());
+        iq.push_back((float)buffer[i].real);  // <- corregido, sin paréntesis
+        iq.push_back((float)buffer[i].imag);  // <- corregido, sin paréntesis
     }
 
     if (!haveRef) {
@@ -127,5 +127,3 @@ void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
 bool SDRunoPlugin_Template::GetModeRestrictivo() const {
     return modoRestrictivo;
 }
-
-
