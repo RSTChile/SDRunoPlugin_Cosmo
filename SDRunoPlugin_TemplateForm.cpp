@@ -41,6 +41,14 @@ void SDRunoPlugin_TemplateForm::Setup() {
 	sett_button.move(nana::point(formWidth - 80, 5));
 	sett_button.size(nana::size(40, 15));
 	sett_button.bgcolor(nana::colors::dark_gray);
+	
+	// Add a simple text label for the settings button
+	auto settingsBtnLabel = std::make_shared<nana::label>(*this, nana::rectangle(formWidth - 75, 7, 30, 11));
+	settingsBtnLabel->caption("Config");
+	settingsBtnLabel->fgcolor(nana::colors::white);
+	settingsBtnLabel->transparent(true);
+	settingsBtnLabel->text_align(nana::align::center, nana::align_v::center);
+	
 	sett_button.events().click([this] { SettingsButton_Click(); });
 	
 	// Handle close event to clean up settings dialog
@@ -60,10 +68,20 @@ void SDRunoPlugin_TemplateForm::Run() {
 void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
 	std::ostringstream oss;
 	oss << std::fixed << std::setprecision(3);
-	rcLabel.caption("RC: " + oss.str() + std::to_string(rc));
-	inrLabel.caption("INR: " + oss.str() + std::to_string(inr));
-	lfLabel.caption("LF: " + oss.str() + std::to_string(lf));
-	rdeLabel.caption("RDE: " + oss.str() + std::to_string(rde));
+	
+	// Format each metric properly
+	oss.str(""); oss << "RC: " << rc;
+	rcLabel.caption(oss.str());
+	
+	oss.str(""); oss << "INR: " << inr;
+	inrLabel.caption(oss.str());
+	
+	oss.str(""); oss << "LF: " << lf;
+	lfLabel.caption(oss.str());
+	
+	oss.str(""); oss << "RDE: " << rde;
+	rdeLabel.caption(oss.str());
+	
 	msgLabel.caption(msg);
 	if (modoRestrictivo) {
 		msgLabel.bgcolor(nana::colors::white);
