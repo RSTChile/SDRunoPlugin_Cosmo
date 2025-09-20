@@ -16,32 +16,27 @@
 
 #include <iunoplugincontroller.h>
 
-
-// TODO: Change these numbers to the height and width of your form
 #define dialogFormWidth (297)
 #define dialogFormHeight (240)
 
 class SDRunoPlugin_TemplateUi;
 
-class SDRunoPlugin_TemplateSettingsDialog : public nana::form
+class SDRunoPlugin_TemplateSettingsDialog : public nana::nested_form
 {
-
 public:
-
-	SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
-	~SDRunoPlugin_TemplateSettingsDialog();
-
-	void Run();
+    SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form);
+    ~SDRunoPlugin_TemplateSettingsDialog();
 
 private:
+    void Setup();
+    int LoadX();
+    int LoadY();
 
-	void Setup();
-	int LoadX();
-	int LoadY();
+    // UI elements with dark theme
+    nana::label titleLbl{ *this, nana::rectangle(20, 20, 260, 30) };
+    nana::label infoLbl{ *this, nana::rectangle(20, 60, 260, 20) };
+    nana::button closeBtn{ *this, nana::rectangle(200, 180, 80, 30) };
 
-	// TODO: Now add your UI controls here
-
-	SDRunoPlugin_TemplateUi & m_parent;
-	IUnoPluginController & m_controller;
+    SDRunoPlugin_TemplateUi& m_parent;
+    IUnoPluginController& m_controller;
 };
-

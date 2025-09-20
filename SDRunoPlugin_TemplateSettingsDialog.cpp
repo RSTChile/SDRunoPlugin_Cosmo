@@ -1,78 +1,82 @@
 #include <sstream>
 #ifdef _WIN32
 #include <Windows.h>
+#include <io.h>
+#include <shlobj.h>
 #endif
 
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include "SDRunoPlugin_TemplateUi.h"
 #include "resource.h"
-#include <io.h>
-#include <shlobj.h>
 
-// Form constructor with handles to parent and uno controller - launches form TemplateForm
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller) :
-	nana::form(nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false)),
-	m_parent(parent),
-	m_controller(controller)
+// Form constructor con handles a parent y controller
+SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form) :
+    nana::nested_form(owner_form, nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false)),
+    m_parent(parent),
+    m_controller(controller)
 {
-	Setup();	
+    Setup();
 }
 
-// Form deconstructor
 SDRunoPlugin_TemplateSettingsDialog::~SDRunoPlugin_TemplateSettingsDialog()
 {
-	// **This Should not be necessary, but just in case - we are going to remove all event handlers
-	// previously assigned to the "destroy" event to avoid memory leaks;
-	this->events().destroy.clear();
-}
-
-// Start Form and start Nana UI processing
-void SDRunoPlugin_TemplateSettingsDialog::Run()
-{	
-	show();
-	nana::exec();
+    this->events().destroy.clear();
 }
 
 int SDRunoPlugin_TemplateSettingsDialog::LoadX()
 {
-	std::string tmp;
-	m_controller.GetConfigurationKey("TemplateSettings.X", tmp);
-	if (tmp.empty())
-	{
-		return -1;
-	}
-	return stoi(tmp);
+    std::string tmp;
+    m_controller.GetConfigurationKey("Template.Settings.X", tmp);
+    if (tmp.empty()) { return -1; }
+    return stoi(tmp);
 }
 
-// Load Y from the ini file (if exists)
-// TODO: Change Template to plugin name
 int SDRunoPlugin_TemplateSettingsDialog::LoadY()
 {
-	std::string tmp;
-	m_controller.GetConfigurationKey("TemplateSettings.Y", tmp);
-	if (tmp.empty())
-	{
-		return -1;
-	}
-	return stoi(tmp);
+    std::string tmp;
+    m_controller.GetConfigurationKey("Template.Settings.Y", tmp);
+    if (tmp.empty()) { return -1; }
+    return stoi(tmp);
 }
 
-// Create the settings dialog form
 void SDRunoPlugin_TemplateSettingsDialog::Setup()
 {
-	// TODO: Form code starts here
+    int posX = LoadX();
+    int posY = LoadY();
+    if (posX != -1 && posY != -1) {
+        move(posX, posY);
+    }
 
-	// Load X and Y locations for the dialog from the ini file (if exists)
-	int posX = LoadX();
-	int posY = LoadY();
-	move(posX, posY);
+    size(nana::size(dialogFormWidth, dialogFormHeight));
+    caption("SDRuno Plugin Cosmo - Settings");
 
-	// This code sets the plugin size and title
-	size(nana::size(dialogFormWidth, dialogFormHeight));
-	caption("SDRuno Plugin Template - Settings");
-
-	// Set the forms back color to black to match SDRuno's settings dialogs
-	this->bgcolor(nana::colors::black);
-
-	// TODO: Extra form code goes here	
+    // SDRuno-style dark theme
+    this->bgcolor(nana::color(45, 45, 48));  // Dark gray background like SDRuno
+    
+    // Title label with larger, bold-style text
+    titleLbl.caption("Cosmo Plugin Configuration");
+    titleLbl.fgcolor(nana::color(220, 220, 220));  // Light gray text
+    titleLbl.transparent(true);
+    titleLbl.text_align(nana::align::center, nana::align_v::center);
+    
+    // Info label with settings description
+    infoLbl.caption("Settings and configuration options will be available here.");
+    infoLbl.fgcolor(nana::color(180, 180, 180));  // Slightly darker gray text
+    infoLbl.transparent(true);
+    
+    // Close button with SDRuno-style appearance
+    closeBtn.caption("Close");
+    closeBtn.bgcolor(nana::color(70, 70, 73));     // Darker button background
+    closeBtn.fgcolor(nana::color(220, 220, 220));  // Light text
+    
+    // Handle close button click
+    closeBtn.events().click([this]() {
+        close();
+        m_parent.SettingsDialogClosed();
+    });
+    
+    // Handle window close event
+    events().unload([this](const nana::arg_unload& arg) {
+        m_parent.SettingsDialogClosed();
+    });
 }

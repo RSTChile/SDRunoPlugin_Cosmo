@@ -8,63 +8,141 @@ on:
 env:
   PLATFORM: Win32
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: windows-2022
 
     steps:
-    - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
-    - name: Setup MSBuild
-      uses: microsoft/setup-msbuild@v1.1
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
 
-    - name: Extract Nana library
-      run: |
-        cd nana/build/bin
-        7z x nana_v141_Release_x86.zip
-      shell: cmd
+      - name: Detect installed Windows SDK version
+        id: detect_sdk
+        shell: pwsh
+        run: |
+          $includeDir = 'C:\Program Files (x86)\Windows Kits\10\Include'
+          $versions = @()
+          if (Test-Path $includeDir) {
+            $versions = Get-ChildItem -Path $includeDir -Directory |
+              Where-Object { $_.Name -match '^\d+\.\d+\.\d+\.\d+$' } |
+              Select-Object -ExpandProperty Name
+          }
+          if ($versions.Count -gt 0) {
+            $sdk = $versions | Sort-Object {[Version]$_} -Descending | Select-Object -First 1
+          } else {
+            $sdk = '10.0.22621.0'
+          }
+          "win_sdk=$sdk" | Out-File -FilePath $env:GITHUB_OUTPUT -Encoding utf8 -Append
+          Write-Host "Using Windows SDK: $sdk"
 
-    - name: Build project
-      run: |
-        msbuild SDRunoPlugin_Template.vcxproj /p:Configuration=Release /p:Platform=${{ env.PLATFORM }} /p:PlatformToolset=v143 /p:AdditionalIncludeDirectories="include;nana\include" /p:AdditionalDependencies="nana\build\bin\nana_v141_Release_x86.lib;%(AdditionalDependencies)"
-      shell: cmd
+      - name: Verify Nana ZIP exists in repo
+        shell: pwsh
+        run: |
+          if (!(Test-Path 'nana/build/bin/nana_v141_Release_x86.zip')) {
+            throw 'nana/build/bin/nana_v141_Release_x86.zip not found'
+          }
+          Write-Host "Nana ZIP found. Listing nana/build/bin:"
+          Get-ChildItem -Path 'nana/build/bin' -Recurse
 
-    - name: Package release
-      run: |
-        mkdir release
-        copy Release\Cosmo.dll release\ 2>nul || copy ${{ env.PLATFORM }}\Release\Cosmo.dll release\ 2>nul || echo "DLL not found in expected location"
-        7z a release\Cosmo-${{ github.ref_name }}.zip Release\*.dll 2>nul || 7z a release\Cosmo-${{ github.ref_name }}.zip ${{ env.PLATFORM }}\Release\*.dll 2>nul || echo "No DLLs to package"
-      shell: cmd
+      - name: Extract Nana library
+        shell: pwsh
+        run: |
+          Expand-Archive -Path 'nana/build/bin/nana_v141_Release_x86.zip' -DestinationPath 'nana/build/bin' -Force
+          Write-Host 'After extraction (.lib files):'
+          Get-ChildItem -Path 'nana/build/bin' -Filter *.lib -Recurse
 
-    - name: Create Release
-      uses: actions/create-release@v1
-      id: create_release
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        tag_name: ${{ github.ref_name }}
-        release_name: Release ${{ github.ref_name }}
-        draft: false
-        prerelease: false
+      - name: Normalize Nana lib path
+        shell: pwsh
+        run: |
+          $target = Join-Path $PWD 'nana/build/bin/nana_v141_Release_x86.lib'
+          if (Test-Path $target) {
+            Write-Host "Target Nana lib already present at: $target"
+          } else {
+            $lib = Get-ChildItem -Path 'nana/build/bin' -Filter '*.lib' -Recurse | Select-Object -First 1
+            if (-not $lib) { throw "Nana .lib not found after extraction." }
+            if ([System.IO.Path]::GetFullPath($lib.FullName) -ieq [System.IO.Path]::GetFullPath($target)) {
+              Write-Host "Source and target are the same file. Skipping copy."
+            } else {
+              New-Item -ItemType Directory -Force -Path (Split-Path $target) | Out-Null
+              Copy-Item $lib.FullName $target -Force
+              Write-Host "Copied Nana lib to: $target"
+            }
+          }
 
-    - name: Upload Release Asset - DLL
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release/Cosmo.dll
-        asset_name: Cosmo.dll
-        asset_content_type: application/octet-stream
-      continue-on-error: true
+      - name: Build project
+        shell: cmd
+        run: |
+          msbuild SDRunoPlugin_Template.vcxproj ^
+            /p:Configuration=Release ^
+            /p:Platform=${{ env.PLATFORM }} ^
+            /p:PlatformToolset=v143 ^
+            /p:WindowsTargetPlatformVersion=${{ steps.detect_sdk.outputs.win_sdk }}
 
-    - name: Upload Release Asset - ZIP
-      uses: actions/upload-release-asset@v1
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      with:
-        upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: release/Cosmo-${{ github.ref_name }}.zip
-        asset_name: Cosmo-${{ github.ref_name }}.zip
-        asset_content_type: application/zip
-      continue-on-error: true
+      - name: Inspect outputs
+        if: always()
+        shell: pwsh
+        run: |
+          Write-Host "Listing candidate output folders:"
+          if (Test-Path 'Release') { Get-ChildItem -Path 'Release' -Recurse -File | Select-Object FullName, Length }
+          if (Test-Path 'Win32\Release') { Get-ChildItem -Path 'Win32\Release' -Recurse -File | Select-Object FullName, Length }
+
+      - name: Package release
+        shell: pwsh
+        run: |
+          New-Item -Type Directory -Force -Path release | Out-Null
+          $dll = Get-ChildItem -Path . -Recurse -Filter 'SDRunoPlugin_Cosmo.dll' | Select-Object -First 1
+          if (-not $dll) {
+            $fallback = Get-ChildItem -Path . -Recurse -Filter 'SDRunoPlugin_Template.dll' | Select-Object -First 1
+            if ($fallback) {
+              Write-Host "Fallback: renaming SDRunoPlugin_Template.dll -> SDRunoPlugin_Cosmo.dll"
+              Copy-Item $fallback.FullName release\SDRunoPlugin_Cosmo.dll -Force
+            } else {
+              Write-Host "DLL not found. Available DLLs under Release folders:"
+              if (Test-Path 'Release') { Get-ChildItem -Path 'Release' -Filter *.dll -Recurse | Select-Object FullName }
+              if (Test-Path 'Win32\Release') { Get-ChildItem -Path 'Win32\Release' -Filter *.dll -Recurse | Select-Object FullName }
+              throw "Plugin DLL not found after build."
+            }
+          } else {
+            Copy-Item $dll.FullName release\SDRunoPlugin_Cosmo.dll -Force
+          }
+          Compress-Archive -Path release\SDRunoPlugin_Cosmo.dll -DestinationPath ("release\SDRunoPlugin_Cosmo-" + "${{ github.ref_name }}" + ".zip") -Force
+          Write-Host "Release package:"; Get-ChildItem release
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref_name }}
+          release_name: Release ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+
+      - name: Upload Release Asset - DLL
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/SDRunoPlugin_Cosmo.dll
+          asset_name: SDRunoPlugin_Cosmo.dll
+          asset_content_type: application/octet-stream
+        continue-on-error: true
+
+      - name: Upload Release Asset - ZIP
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: release/SDRunoPlugin_Cosmo-${{ github.ref_name }}.zip
+          asset_name: SDRunoPlugin_Cosmo-${{ github.ref_name }}.zip
+          asset_content_type: application/zip
+        continue-on-error: true

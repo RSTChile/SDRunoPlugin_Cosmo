@@ -1,36 +1,48 @@
 #pragma once
 
-#include <thread>
-#include <mutex>
-#include <atomic>
-#include <iunoplugincontroller.h>
-#include <iunoplugin.h>
-#include <iunostreamobserver.h>
-#include <iunoaudioobserver.h>
-#include <iunoaudioprocessor.h>
-#include <iunostreamobserver.h>
-#include <iunoannotator.h>
+#include "iunoplugin.h"
+#include "iunostreamobserver.h"
+#include "iunoplugincontroller.h"
+#include <vector>
+#include <string>
+#include <fstream>
+#include <cmath>
+#include <memory>
 
-#include "SDRunoPlugin_TemplateUi.h"
+// Forward declarations
+class SDRunoPlugin_TemplateUi;
 
-class SDRunoPlugin_Template : public IUnoPlugin
-{
-
+class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
 public:
-	
-	SDRunoPlugin_Template(IUnoPluginController& controller);
-	virtual ~SDRunoPlugin_Template();
+    SDRunoPlugin_Template(IUnoPluginController& controller);
+    virtual ~SDRunoPlugin_Template();
 
-	// TODO: change the plugin title here
-	virtual const char* GetPluginName() const override { return "SDRuno Plugin Example"; }
+    // IUnoPlugin overrides
+    void HandleEvent(const UnoEvent& ev) override;
 
-	// IUnoPlugin
-	virtual void HandleEvent(const UnoEvent& ev) override;
+    void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
+
+    void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
+
+    float CalculateRC(const std::vector<float>& iq);
+    float CalculateINR(const std::vector<float>& iq);
+    float CalculateLF(float rc, float inr);
+    float CalculateRDE(float rc, float inr);
+
+    std::string DetectPalimpsesto(const std::vector<float>& iq);
+
+    void SetModeRestrictivo(bool restrictivo);
+    bool GetModeRestrictivo() const;
+
+    // UI Management
+    void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
 private:
-	
-	void WorkerFunction();
-	std::thread* m_worker;
-	std::mutex m_lock;
-	SDRunoPlugin_TemplateUi m_form;
+    std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
+    std::ofstream logFile;
+    std::vector<float> refSignal;
+    bool haveRef;
+    bool modoRestrictivo;
+
+    void UpdateReference(const std::vector<float>& iq);
 };

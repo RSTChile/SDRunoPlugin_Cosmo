@@ -1,44 +1,49 @@
 #pragma once
 
-#include <nana/gui.hpp>
-#include <nana/gui/widgets/button.hpp>
-#include <nana/gui/widgets/label.hpp>
-#include <nana/gui/timer.hpp>
-#include <iunoplugin.h>
-#include <iostream>
-#include <iomanip>
-#include <sstream>
+#include <memory>
+#include <mutex>
+#include <thread>
+#include <atomic>
+#include <functional>
+#include <queue>
+#include "iunoplugincontroller.h"
 
-#include <iunoplugincontroller.h>
-#include "SDRunoPlugin_TemplateForm.h"
-
-// Forward reference
 class SDRunoPlugin_Template;
+class SDRunoPlugin_TemplateForm;
+class SDRunoPlugin_TemplateSettingsDialog;
+class UnoEvent;
 
-class SDRunoPlugin_TemplateUi
-{
+// UI principal para el plugin Cosmo
+class SDRunoPlugin_TemplateUi {
 public:
+    SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
+    ~SDRunoPlugin_TemplateUi();
 
-	SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
-	~SDRunoPlugin_TemplateUi();
-
-	void HandleEvent(const UnoEvent& evt);
-	void FormClosed();
-
-	void ShowUi();
-
-	int LoadX();
-	int LoadY();
+    void ShowSettingsDialog();
+    void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
+    
+    int LoadX();
+    int LoadY();
+    void HandleEvent(const UnoEvent& ev);
+    void FormClosed();
+    void SettingsDialogClosed();
 
 private:
-	
-	SDRunoPlugin_Template & m_parent;
-	std::thread m_thread;
-	std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
-
-	bool m_started;
-
-	std::mutex m_lock;
-
-	IUnoPluginController & m_controller;
+    SDRunoPlugin_Template& m_parent;
+    std::shared_ptr<SDRunoPlugin_TemplateForm> m_mainForm;
+    std::shared_ptr<SDRunoPlugin_TemplateSettingsDialog> m_settingsDialog;
+    IUnoPluginController& m_controller;
+    
+    // GUI thread management
+    std::thread m_guiThread;
+    std::atomic<bool> m_guiRunning{false};
+    std::atomic<bool> m_shutdownRequested{false};
+    std::mutex m_taskMutex;
+    std::queue<std::function<void()>> m_guiTasks;
+    
+    void StartGuiThread();
+    void StopGuiThread();
+    void PostToGuiThread(std::function<void()> task);
+    void GuiThreadMain();
+    void CreateMainWindow();
 };

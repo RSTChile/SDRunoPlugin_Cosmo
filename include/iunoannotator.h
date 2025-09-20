@@ -1,5 +1,5 @@
 #pragma once
-
+#include <string>
 #include <vector>
 #include <stdint.h>
 
@@ -24,8 +24,6 @@ typedef struct
 
 class IUnoAnnotator
 {
-
 public:
-
 	virtual void AnnotatorProcess(std::vector<IUnoAnnotatorItem>& items) = 0;
 };
