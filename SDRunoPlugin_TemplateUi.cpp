@@ -38,6 +38,15 @@ void SDRunoPlugin_TemplateUi::ShowUi()
 	m_form->Run();
 }
 
+// Update metrics in the form
+void SDRunoPlugin_TemplateUi::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo)
+{
+	std::lock_guard<std::mutex> guard(m_lock);
+	if (m_form) {
+		m_form->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+	}
+}
+
 // Leer X de la ini (si existe)
 int SDRunoPlugin_TemplateUi::LoadX()
 {

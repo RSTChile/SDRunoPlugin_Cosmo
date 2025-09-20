@@ -3,7 +3,7 @@
 #include "iunoplugin.h"
 #include "iunostreamobserver.h"
 #include "iunoplugincontroller.h"
-#include "SDRunoPlugin_TemplateForm.h"
+#include "SDRunoPlugin_TemplateUi.h"
 #include <vector>
 #include <string>
 #include <fstream>
@@ -29,7 +29,7 @@ public:
     bool GetModeRestrictivo() const;
 
 private:
-    SDRunoPlugin_TemplateForm m_form;
+    SDRunoPlugin_TemplateUi* m_ui;
     std::ofstream logFile;
     std::vector<float> refSignal;
     bool haveRef;

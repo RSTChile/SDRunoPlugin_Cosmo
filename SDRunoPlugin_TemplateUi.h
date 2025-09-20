@@ -14,6 +14,7 @@ public:
     ~SDRunoPlugin_TemplateUi();
 
     void ShowUi();
+    void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
     int LoadX();
     int LoadY();
     void HandleEvent(const UnoEvent& ev);
