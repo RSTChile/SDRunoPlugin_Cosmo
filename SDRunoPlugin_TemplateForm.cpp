@@ -100,7 +100,3 @@ void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
 	m_settingsDialog->show();
 }
 
-void SDRunoPlugin_TemplateForm::SettingsDialog_Closed() {
-	// Reset the dialog pointer when it's closed
-	m_settingsDialog.reset();
-}
