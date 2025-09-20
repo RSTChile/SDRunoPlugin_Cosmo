@@ -3,11 +3,14 @@
 #include "iunoplugin.h"
 #include "iunostreamobserver.h"
 #include "iunoplugincontroller.h"
-#include "SDRunoPlugin_TemplateForm.h"
 #include <vector>
 #include <string>
 #include <fstream>
 #include <cmath>
+#include <memory>
+
+// Forward declarations
+class SDRunoPlugin_TemplateUi;
 
 class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
 public:
@@ -28,8 +31,11 @@ public:
     void SetModeRestrictivo(bool restrictivo);
     bool GetModeRestrictivo() const;
 
+    // UI Management
+    void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
+
 private:
-    SDRunoPlugin_TemplateForm m_form;
+    std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
     std::ofstream logFile;
     std::vector<float> refSignal;
     bool haveRef;

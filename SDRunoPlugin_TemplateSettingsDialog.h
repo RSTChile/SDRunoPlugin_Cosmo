@@ -26,15 +26,16 @@ class SDRunoPlugin_TemplateSettingsDialog : public nana::form
 public:
     SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
     ~SDRunoPlugin_TemplateSettingsDialog();
-    void Run();
 
 private:
     void Setup();
     int LoadX();
     int LoadY();
 
-    // NUEVO: etiqueta para que no se vea vacío
-    nana::label infoLbl{ *this, nana::rectangle(20, 20, 260, 20) };
+    // UI elements with dark theme
+    nana::label titleLbl{ *this, nana::rectangle(20, 20, 260, 30) };
+    nana::label infoLbl{ *this, nana::rectangle(20, 60, 260, 20) };
+    nana::button closeBtn{ *this, nana::rectangle(200, 180, 80, 30) };
 
     SDRunoPlugin_TemplateUi& m_parent;
     IUnoPluginController& m_controller;
