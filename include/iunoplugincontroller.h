@@ -13,7 +13,6 @@
 
 class IUnoPluginController
 {
-
 public:
 
 	typedef enum
@@ -58,23 +57,23 @@ public:
 		AGCModeFast = 3
 	} AgcMode; 
 
-	virtual void RegisterStreamObserver(channel_t channel,  IUnoStreamObserver* observer) = 0;
+	virtual void RegisterStreamObserver(channel_t channel, IUnoStreamObserver* observer) = 0;
 	virtual void UnregisterStreamObserver(channel_t channel, IUnoStreamObserver* observer) = 0;
 
 	virtual void RegisterStreamProcessor(channel_t channel, IUnoStreamProcessor* observer) = 0;
 	virtual void UnregisterStreamProcessor(channel_t channel, IUnoStreamProcessor* observer) = 0;
 
-	virtual void RegisterAudioObserver(channel_t, IUnoAudioObserver* observer) = 0;
-	virtual void UnregisterAudioObserver(channel_t, IUnoAudioObserver* observer) = 0;
+	virtual void RegisterAudioObserver(channel_t channel, IUnoAudioObserver* observer) = 0;
+	virtual void UnregisterAudioObserver(channel_t channel, IUnoAudioObserver* observer) = 0;
 
-	virtual void RegisterAudioProcessor(channel_t, IUnoAudioProcessor* observer) = 0;
-	virtual void UnregisterAudioProcessor(channel_t, IUnoAudioProcessor* observer) = 0;
+	virtual void RegisterAudioProcessor(channel_t channel, IUnoAudioProcessor* observer) = 0;
+	virtual void UnregisterAudioProcessor(channel_t channel, IUnoAudioProcessor* observer) = 0;
 
-	virtual void RegisterMpxObserver(channel_t, IUnoMpxObserver* observer) = 0;
-	virtual void UnregisterMpxObserver(channel_t, IUnoMpxObserver* observer) = 0;
+	virtual void RegisterMpxObserver(channel_t channel, IUnoMpxObserver* observer) = 0;
+	virtual void UnregisterMpxObserver(channel_t channel, IUnoMpxObserver* observer) = 0;
 
-	virtual void RegisterAnnotator(IUnoAnnotator *annotator) = 0;
-	virtual void UnregisterAnnotator(IUnoAnnotator *annotator) = 0;
+	virtual void RegisterAnnotator(IUnoAnnotator* annotator) = 0;
+	virtual void UnregisterAnnotator(IUnoAnnotator* annotator) = 0;
 
 	virtual DemodulatorType GetDemodulatorType(channel_t channel) = 0;
 	virtual bool SetDemodulatorType(channel_t channel, DemodulatorType type) = 0;
@@ -143,8 +142,8 @@ public:
 
 	virtual void RequestUnload(IUnoPlugin* plugin) = 0;
 
-	virtual bool GetConfigurationKey(std::string key, std::string& value) = 0;
-	virtual bool SetConfigurationKey(std::string key, std::string value) = 0;
+	virtual bool GetConfigurationKey(const std::string& key, std::string& value) = 0;
+	virtual bool SetConfigurationKey(const std::string& key, const std::string& value) = 0;
 
 	virtual int GetVRXCount() = 0;
 	virtual bool GetVRXEnable(channel_t channel) = 0;
