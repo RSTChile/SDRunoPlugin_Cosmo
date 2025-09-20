@@ -1,0 +1,32 @@
+# Test files
+test_window_management
+test_window_management.cpp
+ui_demonstration
+ui_demonstration.cpp
+
+# Build artifacts
+*.o
+*.obj
+*.dll
+*.exe
+*.lib
+*.exp
+*.pdb
+*.ilk
+
+# Visual Studio
+.vs/
+Debug/
+Release/
+x64/
+*.user
+*.vcxproj.user
+
+# Temporary files
+*.tmp
+*.log
+cosmo_metrics_log.csv
+# Test files
+test_threading_logic.cpp
+test_threading
+architecture_overview.html

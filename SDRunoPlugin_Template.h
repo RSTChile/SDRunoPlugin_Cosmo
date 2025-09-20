@@ -9,15 +9,20 @@
 #include <string>
 #include <fstream>
 #include <cmath>
+#include <memory>
+
+// Forward declarations
+class SDRunoPlugin_TemplateUi;
 
 class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
 public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
 
-    // Override to handle SDRuno events like unload
+    // IUnoPlugin overrides
     void HandleEvent(const UnoEvent& ev) override;
 
+    // IUnoStreamObserver override
     void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 
     void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
@@ -32,8 +37,11 @@ public:
     void SetModeRestrictivo(bool restrictivo);
     bool GetModeRestrictivo() const;
 
+    // UI Management
+    void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
+
 private:
-    SDRunoPlugin_TemplateForm m_form;
+    std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
     std::ofstream logFile;
     std::vector<float> refSignal;
     bool haveRef;

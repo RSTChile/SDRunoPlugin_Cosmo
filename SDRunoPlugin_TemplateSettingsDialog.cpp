@@ -1,24 +1,24 @@
 #include <sstream>
 #ifdef _WIN32
 #include <Windows.h>
+#include <io.h>
+#include <shlobj.h>
 #endif
 
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include "SDRunoPlugin_TemplateUi.h"
 #include "resource.h"
-#include <io.h>
-#include <shlobj.h>
 
-// Form constructor con handles a parent y controller
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller) :
-    nana::form(nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false)),
-    m_parent(&parent),
+// Constructor para diálogo anidado con padre UI, forma anidada y controller
+SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form) :
+    nana::nested_form(owner_form, nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false)),
+    m_parent(parent),
     m_controller(controller)
 {
     Setup();
 }
 
-// Form constructor only with controller (called from main form)
+// Constructor para diálogo stand-alone solo con controller (alternativo)
 SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller) :
     nana::form(nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false)),
     m_parent(nullptr),
@@ -30,12 +30,6 @@ SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(IUnoPlu
 SDRunoPlugin_TemplateSettingsDialog::~SDRunoPlugin_TemplateSettingsDialog()
 {
     this->events().destroy.clear();
-}
-
-void SDRunoPlugin_TemplateSettingsDialog::Run()
-{
-    show();
-    nana::exec();
 }
 
 int SDRunoPlugin_TemplateSettingsDialog::LoadX()
@@ -58,33 +52,43 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
 {
     int posX = LoadX();
     int posY = LoadY();
-    move(posX, posY);
+    if (posX != -1 && posY != -1) {
+        move(posX, posY);
+    }
 
     size(nana::size(dialogFormWidth, dialogFormHeight));
     caption("SDRuno Plugin Cosmo - Settings");
 
-    // Apply dark theme similar to SDRuno
-    this->bgcolor(nana::colors::black);
+    // Fondo estilo oscuro similar a SDRuno
+    this->bgcolor(nana::color(45, 45, 48));
 
-    // Setup info label with improved styling
-    infoLbl.caption("Configuración de Cosmo Plugin");
-    infoLbl.fgcolor(nana::colors::white);
+    // Etiqueta título con texto claro y centrado
+    titleLbl.caption("Cosmo Plugin Configuration");
+    titleLbl.fgcolor(nana::color(220, 220, 220));
+    titleLbl.transparent(true);
+    titleLbl.text_align(nana::align::center, nana::align_v::center);
+
+    // Etiqueta de información sobre configuración
+    infoLbl.caption("Settings and configuration options will be available here.");
+    infoLbl.fgcolor(nana::color(180, 180, 180));
     infoLbl.transparent(true);
-    infoLbl.text_align(nana::align::center, nana::align_v::center);
-    
-    // Add a subtitle
-    auto subtitle = std::make_shared<nana::label>(*this, nana::rectangle(20, 50, 260, 20));
-    subtitle->caption("Próximamente: configuraciones avanzadas");
-    subtitle->fgcolor(nana::colors::light_gray);
-    subtitle->transparent(true);
-    subtitle->text_align(nana::align::center, nana::align_v::center);
-    
-    // Handle close event
-    this->events().unload([this](const nana::arg_unload&) {
-        // Settings dialog is being closed
+
+    // Botón cerrar con estilo SDRuno
+    closeBtn.caption("Close");
+    closeBtn.bgcolor(nana::color(70, 70, 73));
+    closeBtn.fgcolor(nana::color(220, 220, 220));
+
+    closeBtn.events().click([this]() {
+        close();
         if (m_parent) {
-            // If called from UI manager, notify it
-            // Currently we don't have a direct callback, but the shared_ptr will be reset
+            m_parent.SettingsDialogClosed();
+        }
+    });
+
+    // Manejar evento de cierre de ventana para avisar al padre
+    events().unload([this](const nana::arg_unload& arg) {
+        if (m_parent) {
+            m_parent.SettingsDialogClosed();
         }
     });
 }

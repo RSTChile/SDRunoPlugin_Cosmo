@@ -1,11 +1,13 @@
 #include "SDRunoPlugin_TemplateForm.h"
 #include "SDRunoPlugin_Template.h"
+#include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include <sstream>
+#include <iomanip>
 
-SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller)
+SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller, SDRunoPlugin_TemplateUi& ui)
 	: nana::form(nana::API::make_center(formWidth, formHeight)),
-	  m_parent(parent), m_controller(controller)
+	  m_parent(parent), m_controller(controller), m_ui(ui)
 {
 	Setup();
 }
@@ -37,26 +39,15 @@ void SDRunoPlugin_TemplateForm::Setup() {
 		m_parent.SetModeRestrictivo(restrictivo);
 	});
 
-	// Configure settings button
-	sett_button.move(nana::point(formWidth - 80, 5));
-	sett_button.size(nana::size(40, 15));
-	sett_button.bgcolor(nana::colors::dark_gray);
-	
-	// Add a simple text label for the settings button
-	auto settingsBtnLabel = std::make_shared<nana::label>(*this, nana::rectangle(formWidth - 75, 7, 30, 11));
-	settingsBtnLabel->caption("Config");
-	settingsBtnLabel->fgcolor(nana::colors::white);
-	settingsBtnLabel->transparent(true);
-	settingsBtnLabel->text_align(nana::align::center, nana::align_v::center);
-	
-	sett_button.events().click([this] { SettingsButton_Click(); });
-	
-	// Handle close event to clean up settings dialog
-	this->events().unload([this](const nana::arg_unload&) {
-		if (m_settingsDialog) {
-			m_settingsDialog->close();
-			m_settingsDialog.reset();
-		}
+	// Settings button setup
+	settingsBtn.caption("Settings");
+	settingsBtn.events().click([this]() {
+		m_ui.ShowSettingsDialog();
+	});
+
+	// Handle window close event to properly shut down
+	events().unload([this](const nana::arg_unload& arg) {
+		m_ui.FormClosed();
 	});
 }
 
@@ -69,17 +60,16 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
 	std::ostringstream oss;
 	oss << std::fixed << std::setprecision(3);
 	
-	// Format each metric properly
-	oss.str(""); oss << "RC: " << rc;
+	oss.str(""); oss.clear(); oss << "RC: " << rc;
 	rcLabel.caption(oss.str());
 	
-	oss.str(""); oss << "INR: " << inr;
+	oss.str(""); oss.clear(); oss << "INR: " << inr;
 	inrLabel.caption(oss.str());
 	
-	oss.str(""); oss << "LF: " << lf;
+	oss.str(""); oss.clear(); oss << "LF: " << lf;
 	lfLabel.caption(oss.str());
 	
-	oss.str(""); oss << "RDE: " << rde;
+	oss.str(""); oss.clear(); oss << "RDE: " << rde;
 	rdeLabel.caption(oss.str());
 	
 	msgLabel.caption(msg);
@@ -99,4 +89,3 @@ void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
 	}
 	m_settingsDialog->show();
 }
-
