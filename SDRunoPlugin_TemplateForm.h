@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <memory>
 #include "iunoplugincontroller.h"
 #include <string>
 
@@ -24,6 +25,7 @@
 
 class SDRunoPlugin_TemplateUi;
 class SDRunoPlugin_Template;
+class SDRunoPlugin_TemplateSettingsDialog;
 
 class SDRunoPlugin_TemplateForm : public nana::form
 {
@@ -71,4 +73,7 @@ private:
 	SDRunoPlugin_Template& m_parent;
 	IUnoPluginController& m_controller;
 	SDRunoPlugin_TemplateUi& m_ui;
+
+	// Settings dialog instance
+	std::shared_ptr<SDRunoPlugin_TemplateSettingsDialog> m_settingsDialog;
 };

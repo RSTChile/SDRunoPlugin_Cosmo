@@ -3,6 +3,8 @@
 #include "iunoplugin.h"
 #include "iunostreamobserver.h"
 #include "iunoplugincontroller.h"
+#include "SDRunoPlugin_TemplateForm.h"
+#include "unoevent.h"
 #include <vector>
 #include <string>
 #include <fstream>
@@ -20,6 +22,7 @@ public:
     // IUnoPlugin overrides
     void HandleEvent(const UnoEvent& ev) override;
 
+    // IUnoStreamObserver override
     void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 
     void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);

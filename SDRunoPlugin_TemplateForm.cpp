@@ -1,7 +1,9 @@
 #include "SDRunoPlugin_TemplateForm.h"
 #include "SDRunoPlugin_Template.h"
 #include "SDRunoPlugin_TemplateUi.h"
+#include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include <sstream>
+#include <iomanip>
 
 SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller, SDRunoPlugin_TemplateUi& ui)
 	: nana::form(nana::API::make_center(formWidth, formHeight)),
@@ -36,17 +38,22 @@ void SDRunoPlugin_TemplateForm::Setup() {
 		bool restrictivo = (modeCombo.option() == 0);
 		m_parent.SetModeRestrictivo(restrictivo);
 	});
-	
+
 	// Settings button setup
 	settingsBtn.caption("Settings");
 	settingsBtn.events().click([this]() {
 		m_ui.ShowSettingsDialog();
 	});
-	
+
 	// Handle window close event to properly shut down
 	events().unload([this](const nana::arg_unload& arg) {
 		m_ui.FormClosed();
 	});
+}
+
+void SDRunoPlugin_TemplateForm::Run() {
+	show();
+	nana::exec();
 }
 
 void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
@@ -73,4 +80,12 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
 		msgLabel.bgcolor(nana::colors::light_yellow);
 		msgLabel.fgcolor(nana::colors::dark_blue);
 	}
+}
+
+void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
+	if (!m_settingsDialog) {
+		// Create the settings dialog, passing the controller directly.
+		m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_controller);
+	}
+	m_settingsDialog->show();
 }

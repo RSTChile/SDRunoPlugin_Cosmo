@@ -24,7 +24,12 @@ class SDRunoPlugin_TemplateUi;
 class SDRunoPlugin_TemplateSettingsDialog : public nana::nested_form
 {
 public:
+    // Constructor for nested dialog from UI parent and owner form
     SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form);
+
+    // Constructor stand-alone with only controller (optional)
+    SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller);
+
     ~SDRunoPlugin_TemplateSettingsDialog();
 
 private:
@@ -37,6 +42,6 @@ private:
     nana::label infoLbl{ *this, nana::rectangle(20, 60, 260, 20) };
     nana::button closeBtn{ *this, nana::rectangle(200, 180, 80, 30) };
 
-    SDRunoPlugin_TemplateUi& m_parent;
+    SDRunoPlugin_TemplateUi* m_parent; // optional pointer to UI parent, may be nullptr
     IUnoPluginController& m_controller;
 };
