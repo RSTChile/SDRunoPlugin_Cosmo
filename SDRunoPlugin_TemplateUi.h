@@ -1,44 +1,27 @@
 #pragma once
 
-#include <nana/gui.hpp>
-#include <nana/gui/widgets/button.hpp>
-#include <nana/gui/widgets/label.hpp>
-#include <nana/gui/timer.hpp>
-#include <iunoplugin.h>
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-
-#include <iunoplugincontroller.h>
+#include <memory>
+#include <mutex>
+#include "iunoplugincontroller.h"
 #include "SDRunoPlugin_TemplateForm.h"
 
-// Forward reference
 class SDRunoPlugin_Template;
 
-class SDRunoPlugin_TemplateUi
-{
+// UI principal para el plugin Cosmo
+class SDRunoPlugin_TemplateUi {
 public:
+    SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
+    ~SDRunoPlugin_TemplateUi();
 
-	SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
-	~SDRunoPlugin_TemplateUi();
-
-	void HandleEvent(const UnoEvent& evt);
-	void FormClosed();
-
-	void ShowUi();
-
-	int LoadX();
-	int LoadY();
+    void ShowUi();
+    int LoadX();
+    int LoadY();
+    void HandleEvent(const UnoEvent& ev);
+    void FormClosed();
 
 private:
-	
-	SDRunoPlugin_Template & m_parent;
-	std::thread m_thread;
-	std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
-
-	bool m_started;
-
-	std::mutex m_lock;
-
-	IUnoPluginController & m_controller;
+    SDRunoPlugin_Template& m_parent; // CORREGIDO: referencia al plugin, no a la UI
+    std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
+    IUnoPluginController& m_controller;
+    std::mutex m_lock;
 };
