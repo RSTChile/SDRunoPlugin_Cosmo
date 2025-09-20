@@ -1,5 +1,6 @@
 #include "SDRunoPlugin_TemplateForm.h"
 #include "SDRunoPlugin_Template.h"
+#include <sstream>
 
 SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller)
 	: nana::form(nana::API::make_center(formWidth, formHeight)),
@@ -30,7 +31,7 @@ void SDRunoPlugin_TemplateForm::Setup() {
 	modeCombo.push_back("Modo Funcional-Libre");
 	modeCombo.option(0);
 
-	modeCombo.events().selected([this](const nana::arg_combox& arg) {
+	modeCombo.events().selected([this](const nana::arg_combox&) {
 		bool restrictivo = (modeCombo.option() == 0);
 		m_parent.SetModeRestrictivo(restrictivo);
 	});
