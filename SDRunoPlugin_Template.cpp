@@ -128,3 +128,4 @@ bool SDRunoPlugin_Template::GetModeRestrictivo() const {
     return modoRestrictivo;
 }
 
+
