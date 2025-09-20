@@ -10,32 +10,83 @@
 #include "SDRunoPlugin_Template.h"
 #include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateForm.h"
+#include "SDRunoPlugin_TemplateSettingsDialog.h"
 
-// Ui constructor - carga la ventana principal (sin thread)
+// Ui constructor - carga la ventana principal inmediatamente
 SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller) :
 	m_parent(parent),
-	m_form(nullptr),
+	m_mainForm(nullptr),
+	m_settingsDialog(nullptr),
 	m_controller(controller)
 {
-	ShowUi();
+	ShowMainWindow();
+	StartMainLoop();
 }
 
 // Ui destructor: cierra todas las ventanas Nana de forma segura
 SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 {
-	if (m_form) {
-		m_form->close();
+	std::lock_guard<std::mutex> guard(m_lock);
+	
+	// Close settings dialog first if open
+	if (m_settingsDialog) {
+		m_settingsDialog->close();
+		m_settingsDialog.reset();
 	}
+	
+	// Close main form
+	if (m_mainForm) {
+		m_mainForm->close();
+		m_mainForm.reset();
+	}
+	
+	// Only call exit_all after all windows are properly closed
 	nana::API::exit_all();
 }
 
-// Mostrar y ejecutar el formulario principal
-void SDRunoPlugin_TemplateUi::ShowUi()
+// Mostrar la ventana principal (sin bloquear con exec)
+void SDRunoPlugin_TemplateUi::ShowMainWindow()
 {
 	std::lock_guard<std::mutex> guard(m_lock);
-	// CORRECCIÓN: pasa la referencia al plugin, no a la UI
-	m_form = std::make_shared<SDRunoPlugin_TemplateForm>(m_parent, m_controller);
-	m_form->Run();
+	if (!m_mainForm) {
+		m_mainForm = std::make_shared<SDRunoPlugin_TemplateForm>(m_parent, m_controller, *this);
+		m_mainForm->show();
+	}
+}
+
+// Mostrar el diálogo de configuración bajo demanda
+void SDRunoPlugin_TemplateUi::ShowSettingsDialog()
+{
+	std::lock_guard<std::mutex> guard(m_lock);
+	if (!m_settingsDialog) {
+		m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, m_controller);
+		m_settingsDialog->show();
+	} else {
+		// If already open, bring to front
+		m_settingsDialog->show();
+	}
+}
+
+// Iniciar el bucle principal de Nana (solo una vez)
+void SDRunoPlugin_TemplateUi::StartMainLoop()
+{
+	nana::exec();
+}
+
+// Actualizar métricas en la ventana principal
+void SDRunoPlugin_TemplateUi::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo)
+{
+	std::lock_guard<std::mutex> guard(m_lock);
+	if (m_mainForm) {
+		m_mainForm->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+	}
+}
+
+// Callback cuando se cierra el diálogo de configuración
+void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
+{
+	std::lock_guard<std::mutex> guard(m_lock);
+	m_settingsDialog.reset();
 }
 
 // Leer X de la ini (si existe)
@@ -77,11 +128,25 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 		break;
 
 	case UnoEvent::ClosingDown:
-		if (m_form) {
-			m_form->close();
+		{
+			std::lock_guard<std::mutex> guard(m_lock);
+			
+			// Close settings dialog first if open
+			if (m_settingsDialog) {
+				m_settingsDialog->close();
+				m_settingsDialog.reset();
+			}
+			
+			// Close main form
+			if (m_mainForm) {
+				m_mainForm->close();
+				m_mainForm.reset();
+			}
+			
+			// Exit Nana main loop
+			nana::API::exit_all();
+			FormClosed();
 		}
-		nana::API::exit_all();
-		FormClosed();
 		break;
 
 	default:

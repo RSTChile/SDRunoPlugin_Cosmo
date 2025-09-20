@@ -28,11 +28,9 @@ class SDRunoPlugin_Template;
 class SDRunoPlugin_TemplateForm : public nana::form
 {
 public:
-	SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller);		
+	SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller, SDRunoPlugin_TemplateUi& ui);		
 	~SDRunoPlugin_TemplateForm();
 	
-	void Run();
-
 	void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
 private:
@@ -66,7 +64,11 @@ private:
 	nana::label msgLabel{ *this, nana::rectangle(20, 180, 220, 40) };
 
 	nana::combox modeCombo{ *this, nana::rectangle(20, 20, 120, 22) };
+	
+	// Settings button
+	nana::button settingsBtn{ *this, nana::rectangle(150, 20, 80, 22) };
 
 	SDRunoPlugin_Template& m_parent;
 	IUnoPluginController& m_controller;
+	SDRunoPlugin_TemplateUi& m_ui;
 };
