@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <numeric>
 #include <iostream>
+#include <cmath>
 
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller), m_form(*this, controller), haveRef(false), modoRestrictivo(true)
@@ -122,6 +123,6 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
 void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
     modoRestrictivo = restrictivo;
 }
-bool SDRunoPlugin_Template::GetModeRestrictivo() {
+bool SDRunoPlugin_Template::GetModeRestrictivo() const {
     return modoRestrictivo;
 }
