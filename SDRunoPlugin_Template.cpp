@@ -1,19 +1,29 @@
 #include "SDRunoPlugin_Template.h"
+#include "SDRunoPlugin_TemplateUi.h"
 #include <algorithm>
 #include <numeric>
 #include <iostream>
 #include <cmath>
 
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
-    : IUnoPlugin(controller), m_form(*this, controller), haveRef(false), modoRestrictivo(true)
+    : IUnoPlugin(controller), m_ui(nullptr), haveRef(false), modoRestrictivo(true)
 {
     controller.RegisterStreamObserver(0, this);
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
+    
+    // Initialize and show UI automatically
+    m_ui = new SDRunoPlugin_TemplateUi(*this, controller);
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
     if (logFile.is_open()) logFile.close();
+    
+    // Clean up UI resources
+    if (m_ui) {
+        delete m_ui;
+        m_ui = nullptr;
+    }
 }
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
@@ -50,7 +60,9 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
         if (!palimpsestoMsg.empty()) msg = palimpsestoMsg;
     }
 
-    m_form.UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+    if (m_ui) {
+        m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+    }
     LogMetrics(rc, inr, lf, rde, msg);
 }
 
