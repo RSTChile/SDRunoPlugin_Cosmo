@@ -17,6 +17,8 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
+    // Unregister stream observer first
+    m_controller.UnregisterStreamObserver(0, this);
     // UI manager destructor will handle proper window cleanup
     m_ui.reset();
     if (logFile.is_open()) logFile.close();
@@ -138,5 +140,12 @@ bool SDRunoPlugin_Template::GetModeRestrictivo() const {
 void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
     if (m_ui) {
         m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+    }
+}
+
+// Handle events from SDRuno (including plugin unload and shutdown)
+void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
+    if (m_ui) {
+        m_ui->HandleEvent(ev);
     }
 }

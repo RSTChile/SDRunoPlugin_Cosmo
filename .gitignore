@@ -26,3 +26,7 @@ x64/
 *.tmp
 *.log
 cosmo_metrics_log.csv
+# Test files
+test_threading_logic.cpp
+test_threading
+architecture_overview.html
