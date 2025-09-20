@@ -94,9 +94,7 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
 
 void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
 	if (!m_settingsDialog) {
-		// Create a temporary UI wrapper for the settings dialog
-		// Since the original design expected SDRunoPlugin_TemplateUi, we need to adapt
-		// For now, we'll pass the controller directly and modify the dialog constructor
+		// Create the settings dialog, passing the controller directly.
 		m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_controller);
 	}
 	m_settingsDialog->show();
