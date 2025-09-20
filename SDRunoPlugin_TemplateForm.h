@@ -13,7 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
-#include <iunoplugincontroller.h>
+#include "iunoplugincontroller.h"
 #include <string>
 
 #define topBarHeight (27)
