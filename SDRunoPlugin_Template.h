@@ -1,8 +1,8 @@
 #pragma once
 
-#include <iunoplugin.h>
-#include <iunostreamobserver.h>
-#include <iunoplugincontroller.h>
+#include "iunoplugin.h"
+#include "iunostreamobserver.h"
+#include "iunoplugincontroller.h"
 #include "SDRunoPlugin_TemplateForm.h"
 #include <vector>
 #include <string>
@@ -26,7 +26,7 @@ public:
     std::string DetectPalimpsesto(const std::vector<float>& iq);
 
     void SetModeRestrictivo(bool restrictivo);
-    bool GetModeRestrictivo();
+    bool GetModeRestrictivo() const;
 
 private:
     SDRunoPlugin_TemplateForm m_form;
