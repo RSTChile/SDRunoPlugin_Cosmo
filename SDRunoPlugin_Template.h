@@ -4,6 +4,7 @@
 #include "iunostreamobserver.h"
 #include "iunoplugincontroller.h"
 #include "SDRunoPlugin_TemplateForm.h"
+#include "unoevent.h"
 #include <vector>
 #include <string>
 #include <fstream>
@@ -13,6 +14,9 @@ class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
 public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
+
+    // Override to handle SDRuno events like unload
+    void HandleEvent(const UnoEvent& ev) override;
 
     void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 

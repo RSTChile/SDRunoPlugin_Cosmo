@@ -1,5 +1,6 @@
 #include "SDRunoPlugin_TemplateForm.h"
 #include "SDRunoPlugin_Template.h"
+#include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include <sstream>
 
 SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller)
@@ -35,6 +36,20 @@ void SDRunoPlugin_TemplateForm::Setup() {
 		bool restrictivo = (modeCombo.option() == 0);
 		m_parent.SetModeRestrictivo(restrictivo);
 	});
+
+	// Configure settings button
+	sett_button.move(nana::point(formWidth - 80, 5));
+	sett_button.size(nana::size(40, 15));
+	sett_button.bgcolor(nana::colors::dark_gray);
+	sett_button.events().click([this] { SettingsButton_Click(); });
+	
+	// Handle close event to clean up settings dialog
+	this->events().unload([this](const nana::arg_unload&) {
+		if (m_settingsDialog) {
+			m_settingsDialog->close();
+			m_settingsDialog.reset();
+		}
+	});
 }
 
 void SDRunoPlugin_TemplateForm::Run() {
@@ -57,4 +72,19 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
 		msgLabel.bgcolor(nana::colors::light_yellow);
 		msgLabel.fgcolor(nana::colors::dark_blue);
 	}
+}
+
+void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
+	if (!m_settingsDialog) {
+		// Create a temporary UI wrapper for the settings dialog
+		// Since the original design expected SDRunoPlugin_TemplateUi, we need to adapt
+		// For now, we'll pass the controller directly and modify the dialog constructor
+		m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_controller);
+	}
+	m_settingsDialog->show();
+}
+
+void SDRunoPlugin_TemplateForm::SettingsDialog_Closed() {
+	// Reset the dialog pointer when it's closed
+	m_settingsDialog.reset();
 }

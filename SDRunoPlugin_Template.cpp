@@ -16,6 +16,17 @@ SDRunoPlugin_Template::~SDRunoPlugin_Template() {
     if (logFile.is_open()) logFile.close();
 }
 
+void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
+    switch (ev.GetType()) {
+    case UnoEvent::ClosingDown:
+        // Close the main form properly when SDRuno is closing
+        m_form.close();
+        break;
+    default:
+        break;
+    }
+}
+
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
     std::vector<float> iq;
     iq.reserve(length * 2);

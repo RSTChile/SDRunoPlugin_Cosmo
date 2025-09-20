@@ -25,6 +25,7 @@ class SDRunoPlugin_TemplateSettingsDialog : public nana::form
 {
 public:
     SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
+    SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller); // New constructor
     ~SDRunoPlugin_TemplateSettingsDialog();
     void Run();
 
@@ -36,6 +37,6 @@ private:
     // NUEVO: etiqueta para que no se vea vacío
     nana::label infoLbl{ *this, nana::rectangle(20, 20, 260, 20) };
 
-    SDRunoPlugin_TemplateUi& m_parent;
+    SDRunoPlugin_TemplateUi* m_parent; // Made optional (can be nullptr)
     IUnoPluginController& m_controller;
 };
