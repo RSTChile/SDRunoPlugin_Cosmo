@@ -23,11 +23,9 @@ SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, 
 // Ui destructor: cierra todas las ventanas Nana de forma segura
 SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 {
-	// Cierra el formulario principal si existe
 	if (m_form) {
 		m_form->close();
 	}
-	// Fuerza que todos los bucles nana::exec() terminen y cierra cualquier ventana restante (incluye Settings)
 	nana::API::exit_all();
 }
 
@@ -35,7 +33,8 @@ SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 void SDRunoPlugin_TemplateUi::ShowUi()
 {
 	std::lock_guard<std::mutex> guard(m_lock);
-	m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
+	// CORRECCIÓN: pasa la referencia al plugin, no a la UI
+	m_form = std::make_shared<SDRunoPlugin_TemplateForm>(m_parent, m_controller);
 	m_form->Run();
 }
 
@@ -78,12 +77,11 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 		break;
 
 	case UnoEvent::ClosingDown:
-		// Al cerrar SDRuno, cerrar la UI y terminar Nana
 		if (m_form) {
 			m_form->close();
 		}
 		nana::API::exit_all();
-		FormClosed(); // Solicita descargar el plugin
+		FormClosed();
 		break;
 
 	default:
