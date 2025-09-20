@@ -37,6 +37,7 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
     std::string palimpsestoMsg = DetectPalimpsesto(iq);
 
     std::string msg;
+    // --- Triple check: uso correcto de la variable modoRestrictivo (sin paréntesis, no llamada como función) ---
     if (!modoRestrictivo) {
         if (lf > 0.5f && rde > 0.3f) {
             msg = "¿Y si hay un patrón oculto? NO SÉ. DISIENTO.";
