@@ -4,11 +4,12 @@
 #include <numeric>
 #include <iostream>
 #include <cmath>
+#include <unoevent.h>  // Necesario para usar UnoEvent::ClosingDown y GetType()
 
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller)
 {
-    // Register IQ observer on VRX 0
+    // Registrar observador IQ en VRX 0
     controller.RegisterStreamObserver(0, this);
 
     // Logging
@@ -18,10 +19,10 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
-    // Stop callbacks first (guarded)
+    // Detener callbacks primero (protegido)
     try { m_controller.UnregisterStreamObserver(0, this); } catch (...) {}
 
-    // Destroy UI after callbacks are stopped
+    // Destruir UI después de detener callbacks
     m_ui.reset();
 
     if (logFile.is_open()) logFile.close();
@@ -34,10 +35,10 @@ void SDRunoPlugin_Template::EnsureUiStarted() {
 }
 
 void SDRunoPlugin_Template::RequestUnloadAsync() {
-    // Do not request unload if the host is shutting down
+    // No solicitar unload si el host está cerrando
     if (m_closingDown.load(std::memory_order_acquire)) return;
 
-    // Ensure we only request unload once
+    // Garantizar una sola solicitud
     bool expected = false;
     if (!m_isUnloading.compare_exchange_strong(expected, true)) return;
     m_unloadRequested.store(true, std::memory_order_release);
@@ -45,14 +46,14 @@ void SDRunoPlugin_Template::RequestUnloadAsync() {
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t /*channel*/, const Complex* buffer, int length) {
     try {
-        // Execute pending unload request safely on plugin/host thread
+        // Ejecutar petición pendiente de unload en hilo del plugin/host
         if (m_unloadRequested.exchange(false, std::memory_order_acq_rel)) {
             try { m_controller.RequestUnload(this); } catch (...) {}
-            // After scheduling unload, avoid more processing
+            // Tras programar unload, no procesar más
             return;
         }
 
-        // Start UI lazily on first samples
+        // Iniciar UI perezosamente al recibir primeras muestras
         EnsureUiStarted();
 
         std::vector<float> iq;
@@ -143,9 +144,16 @@ void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde,
 
 void SDRunoPlugin_Template::UpdateReference(const std::vector<float>& iq) { refSignal = iq; }
 
-// HandleEvent hardened: never let exceptions escape to host
+void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
+    if (m_ui) {
+        m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+    }
+}
+
+// Manejo de eventos endurecido: no dejar escapar excepciones al host
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     try {
+        // Marcar ClosingDown para evitar solicitar unload durante el cierre
         if (ev.GetType() == UnoEvent::ClosingDown) {
             m_closingDown.store(true, std::memory_order_release);
         }
@@ -179,3 +187,6 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
         return "Patrón palimpsesto detectado en índices primos.";
     return "";
 }
+
+void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) { modoRestrictivo = restrictivo; }
+bool SDRunoPlugin_Template::GetModeRestrictivo() const { return modoRestrictivo; }
