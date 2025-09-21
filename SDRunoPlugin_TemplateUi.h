@@ -6,6 +6,7 @@
 #include <atomic>
 #include <functional>
 #include <queue>
+#include <string>
 #include "iunoplugincontroller.h"
 
 class SDRunoPlugin_Template;
@@ -21,6 +22,7 @@ public:
 
     void ShowSettingsDialog();
     void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
+    void UpdateSavePath(const std::string& path);
 
     int LoadX();
     int LoadY();
