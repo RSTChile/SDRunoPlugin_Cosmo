@@ -25,6 +25,14 @@ public:
     void UpdateSavePath(const std::string& path);
     void SetStreamingState(bool streaming);
 
+    // Acciones solicitadas desde diálogos/GUI
+    void ToggleCapture(bool enabled);
+    void RequestChangeBaseDir(const std::string& path);
+    void RequestChangeVrx(int vrxIndex);
+
+    // Consultas de configuración para mostrar en GUI
+    std::string GetBaseDir() const;
+
     int LoadX();
     int LoadY();
     void HandleEvent(const UnoEvent& ev);
