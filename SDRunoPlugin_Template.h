@@ -1,6 +1,6 @@
 #pragma once
 #include "iunoplugin.h"
-#include "iunostreamobserver.h"
+#include "iunoaudioprocessor.h"
 #include <memory>
 #include <atomic>
 #include <fstream>
@@ -11,7 +11,7 @@
 
 class SDRunoPlugin_TemplateUi;
 
-class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
+class SDRunoPlugin_Template : public IUnoPlugin, public IUnoAudioProcessor {
 public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
@@ -19,8 +19,8 @@ public:
     // IUnoPlugin override
     void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoStreamObserver override
-    void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
+    // IUnoAudioProcessor override (IQOUT como floats intercalados)
+    void AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) override;
 
     void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
 
@@ -40,7 +40,7 @@ public:
     void RequestUnloadAsync();
     void SetCaptureEnabled(bool enabled);                  // Botón Capturar
     void RequestChangeBaseDirAsync(const std::string& p);  // Cambio de carpeta
-    void ChangeVrxAsync(int newIndex);                     // Re-registrar VRX
+    void ChangeVrxAsync(int newIndex);                     // Futuro: re-registrar VRX (actualmente fijo en 0)
 
     // Leídos por la GUI (thread-safe)
     std::string GetBaseDirSafe() const;
@@ -51,18 +51,15 @@ private:
 
     // Gestión de archivos IQ
     enum class Mode { Restrictivo = 0, Funcional = 1 };
-    void ApplyPendingModeIfAny();   // aplicar cambio de modo en hilo del plugin
+    void ApplyPendingModeIfAny();
     void ApplyPendingBaseDirIfAny();
     void ApplyPendingVrxIfAny();
-    void RotateIqFile(Mode mode);   // cerrar/abrir archivo para el modo
+    void RotateIqFile(Mode mode);
     void CloseIqFile();
     void AppendIq(const std::vector<float>& iq);
-    std::string BuildBaseDataDir();               // C:\ProgramData\CosmoSDRuno\examples
+    std::string BuildBaseDataDir();
     static std::string BuildTimestamp();
     static std::string ModeToString(Mode m);
-
-    // Auto–adjuntar al primer VRX activo
-    bool AttachToFirstActiveVrx();
 
 private:
     std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
@@ -102,7 +99,7 @@ private:
     std::atomic<bool> m_baseDirChangeRequested{false};
 
     // VRX
-    int m_vrxIndex{0};
+    int m_vrxIndex{0}; // por ahora usamos siempre VRX 0 como en los ejemplos
     std::atomic<bool> m_vrxChangeRequested{false};
     std::atomic<int>  m_pendingVrxIndex{0};
 };
