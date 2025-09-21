@@ -34,6 +34,9 @@ public:
 
     void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
+    // Señal desde el hilo GUI: pedir unload de forma segura (se ejecutará en el hilo del plugin)
+    void RequestUnloadAsync();
+
 private:
     // Crear la UI en diferido para evitar reentrancia durante CreatePlugin
     void EnsureUiStarted();
@@ -43,8 +46,11 @@ private:
     std::atomic<bool> m_uiStarted{false};
     std::ofstream logFile;
     std::vector<float> refSignal;
-    bool haveRef;
-    bool modoRestrictivo;
+    bool haveRef{false};
+    bool modoRestrictivo{true};
+
+    // Flag pedido por el hilo GUI para ejecutar RequestUnload en el hilo del plugin
+    std::atomic<bool> m_unloadRequested{false};
 
     void UpdateReference(const std::vector<float>& iq);
 };
