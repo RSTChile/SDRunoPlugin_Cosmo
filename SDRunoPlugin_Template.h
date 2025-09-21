@@ -1,10 +1,9 @@
 #pragma once
 
-// Mantener orden de includes de la API estable
 #include "iunoplugin.h"
 #include "iunoplugincontroller.h"
 #include "iunoaudioprocessor.h"
-#include "iunostreamobserver.h" // Para captura IQ sin tocar la demod del usuario
+#include "iunostreamobserver.h"
 
 #include <memory>
 #include <atomic>
@@ -24,10 +23,10 @@ public:
     // IUnoPlugin
     void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoAudioProcessor (no lo usaremos para capturar; lo implementamos como no-op)
+    // IUnoAudioProcessor: no tocamos audio
     void AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) override;
 
-    // IUnoStreamObserver (IQ crudo del VRX seleccionado, sin cambiar demod)
+    // IUnoStreamObserver: IQ crudo por VRX
     void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 
     // UI -> core
@@ -62,6 +61,7 @@ private:
     std::string BuildBaseDataDir();
     static std::string BuildTimestamp();
     static std::string ModeToString(Mode m);
+    void ProcessUnloadIfRequested(); // descarga segura fuera de callbacks
 
 private:
     std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
@@ -73,7 +73,7 @@ private:
     bool haveRef{false};
     bool modoRestrictivo{true};
 
-    // Coordinación de unload
+    // Descarga
     std::atomic<bool> m_unloadRequested{false};
     std::atomic<bool> m_isUnloading{false};
     std::atomic<bool> m_closingDown{false};
@@ -94,13 +94,13 @@ private:
     std::ofstream m_iqOut;
     std::string   m_currentFilePath;
 
-    // Carpeta base (protegida)
+    // Carpeta base
     mutable std::mutex m_configMutex;
     std::string   m_baseDir;
     std::string   m_pendingBaseDir;
     std::atomic<bool> m_baseDirChangeRequested{false};
 
-    // VRX (VRX 0 por defecto; se puede cambiar desde Settings)
+    // VRX
     int m_vrxIndex{0};
     std::atomic<bool> m_vrxChangeRequested{false};
     std::atomic<int>  m_pendingVrxIndex{0};
