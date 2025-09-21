@@ -1,20 +1,24 @@
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateForm.h"
+#include <sstream>
 
 using namespace nana;
 
 SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& ui, SDRunoPlugin_TemplateForm& owner, IUnoPluginController& controller)
     : m_ui(ui)
     , m_controller(controller)
-    , m_form(owner, rectangle(0, 0, 420, 320))
+    , m_form(owner, rectangle(0, 0, 520, 360))
     , m_vrxList(m_form)
     , m_btnRefresh(m_form, "Refresh")
     , m_btnClose(m_form, "Close")
+    , m_btnFolder(m_form, "Folder...")
     , m_title(m_form, "VRX disponibles")
+    , m_folderLabel(m_form, "")
 {
     BuildUi();
     PopulateVrxList();
+    UpdateFolderLabel(m_ui.GetBaseDir());
 }
 
 void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
@@ -22,14 +26,30 @@ void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
     m_form.caption("Cosmo - Settings");
     m_title.move(rectangle{ 10, 10, 200, 24 });
 
-    m_vrxList.move(rectangle{ 10, 40, 400, 220 });
+    // Lista VRX
+    m_vrxList.move(rectangle{ 10, 40, 500, 220 });
     m_vrxList.append_header("VRX", 120);
     m_vrxList.append_header("Enabled", 120);
 
+    // Controles
     m_btnRefresh.move(rectangle{ 10, 270, 100, 30 });
-    m_btnClose.move(rectangle{ 310, 270, 100, 30 });
+    m_btnFolder.move(rectangle{ 120, 270, 100, 30 });
+    m_btnClose.move(rectangle{ 410, 270, 100, 30 });
+
+    m_folderLabel.move(rectangle{ 10, 310, 500, 24 });
 
     m_btnRefresh.events().click([this]() { PopulateVrxList(); });
+
+    m_btnFolder.events().click([this]() {
+        folderbox fb;
+        auto picks = fb();
+        if (!picks.empty()) {
+            auto path = picks.front().string();
+            m_ui.RequestChangeBaseDir(path);
+            UpdateFolderLabel(path);
+        }
+    });
+
     m_btnClose.events().click([this]() { this->close(); });
 
     // Doble click: elegir VRX
@@ -64,17 +84,22 @@ void SDRunoPlugin_TemplateSettingsDialog::PopulateVrxList()
     }
 }
 
+void SDRunoPlugin_TemplateSettingsDialog::UpdateFolderLabel(const std::string& path)
+{
+    m_folderLabel.caption(std::string("Folder: ") + path);
+}
+
 void SDRunoPlugin_TemplateSettingsDialog::show()
 {
     m_form.show();
     // Refrescar al abrir
     PopulateVrxList();
+    UpdateFolderLabel(m_ui.GetBaseDir());
 }
 
 void SDRunoPlugin_TemplateSettingsDialog::close()
 {
     try { m_form.close(); } catch (...) {}
-    // Avisar al UI para liberar el shared_ptr
     try { m_ui.SettingsDialogClosed(); } catch (...) {}
 }
 
