@@ -42,10 +42,22 @@ private:
     void EnsureUiStarted();
     void UpdateReference(const std::vector<float>& iq);
 
+    // Gestión de archivos IQ
+    enum class Mode { Restrictivo = 0, Funcional = 1 };
+    void ApplyPendingModeIfAny();  // aplicar cambio de modo en hilo del plugin
+    void RotateIqFile(Mode mode);  // cerrar/abrir archivo para el modo
+    void CloseIqFile();
+    void AppendIq(const std::vector<float>& iq);
+    std::string BuildBaseDataDir();               // Documentos\\SDRuno\\Cosmo
+    static std::string BuildTimestamp();
+    static std::string ModeToString(Mode m);
+
 private:
     std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
     std::atomic<bool> m_uiStarted{false};
     std::ofstream logFile;
+
+    // Métricas
     std::vector<float> refSignal;
     bool haveRef{false};
     bool modoRestrictivo{true};
@@ -57,4 +69,15 @@ private:
 
     // Telemetría
     std::chrono::steady_clock::time_point m_lastTick{};
+
+    // Streaming / Modo
+    std::atomic<bool> m_isStreaming{false};
+    std::atomic<bool> m_modeChangeRequested{false};
+    std::atomic<int>  m_pendingMode{0}; // 0=Restrictivo, 1=Funcional
+    Mode m_activeMode{Mode::Restrictivo};
+
+    // Archivos IQ
+    std::ofstream m_iqOut;
+    std::string   m_currentFilePath;
+    std::string   m_baseDir;
 };
