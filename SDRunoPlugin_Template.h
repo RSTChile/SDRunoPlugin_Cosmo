@@ -1,9 +1,10 @@
 #pragma once
 
-// Orden estable de la API (como en plugins de referencia)
+// Mantener orden de includes de la API estable
 #include "iunoplugin.h"
 #include "iunoplugincontroller.h"
 #include "iunoaudioprocessor.h"
+#include "iunostreamobserver.h" // Para captura IQ sin tocar la demod del usuario
 
 #include <memory>
 #include <atomic>
@@ -15,7 +16,7 @@
 
 class SDRunoPlugin_TemplateUi;
 
-class SDRunoPlugin_Template : public IUnoPlugin, public IUnoAudioProcessor {
+class SDRunoPlugin_Template : public IUnoPlugin, public IUnoAudioProcessor, public IUnoStreamObserver {
 public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
@@ -23,10 +24,13 @@ public:
     // IUnoPlugin
     void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoAudioProcessor (IQOUT a 192 kS/s; floats intercalados con I/Q invertidos por SDRuno)
+    // IUnoAudioProcessor (no lo usaremos para capturar; lo implementamos como no-op)
     void AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) override;
 
-    // Señales desde la UI
+    // IUnoStreamObserver (IQ crudo del VRX seleccionado, sin cambiar demod)
+    void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
+
+    // UI -> core
     void SetModeRestrictivo(bool restrictivo);
     bool GetModeRestrictivo() const;
     void SetCaptureEnabled(bool enabled);
