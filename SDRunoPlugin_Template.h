@@ -6,6 +6,7 @@
 #include <fstream>
 #include <vector>
 #include <string>
+#include <chrono>
 
 class SDRunoPlugin_TemplateUi;
 
@@ -34,10 +35,12 @@ public:
 
     void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
+    // Signal from GUI thread: request unload safely (will run on plugin thread)
     void RequestUnloadAsync();
 
 private:
     void EnsureUiStarted();
+    void UpdateReference(const std::vector<float>& iq);
 
 private:
     std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
@@ -47,9 +50,11 @@ private:
     bool haveRef{false};
     bool modoRestrictivo{true};
 
-    std::atomic<bool> m_unloadRequested{false};
-    std::atomic<bool> m_isUnloading{false};
-    std::atomic<bool> m_closingDown{false};
+    // Unload coordination
+    std::atomic<bool> m_unloadRequested{false}; // consumed on plugin thread
+    std::atomic<bool> m_isUnloading{false};     // set once per lifecycle
+    std::atomic<bool> m_closingDown{false};     // set on ClosingDown event
 
-    void UpdateReference(const std::vector<float>& iq);
+    // Telemetry
+    std::chrono::steady_clock::time_point m_lastTick{};
 };
