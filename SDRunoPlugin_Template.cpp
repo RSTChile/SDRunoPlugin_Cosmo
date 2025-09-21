@@ -194,13 +194,15 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
         switch (ev.GetType()) {
         case UnoEvent::StreamingStarted:
             m_isStreaming.store(true, std::memory_order_release);
-            // Al iniciar streaming, forzar rotación a un nuevo archivo
+            if (m_ui) m_ui->SetStreamingState(true);
+            // Forzar rotación a un nuevo archivo para el modo activo
             m_modeChangeRequested.store(true, std::memory_order_release);
             m_pendingMode.store(modoRestrictivo ? 0 : 1, std::memory_order_release);
             break;
         case UnoEvent::StreamingStopped:
             m_isStreaming.store(false, std::memory_order_release);
             CloseIqFile();
+            if (m_ui) { m_ui->UpdateSavePath(""); m_ui->SetStreamingState(false); }
             break;
         case UnoEvent::ClosingDown:
             m_closingDown.store(true, std::memory_order_release);
