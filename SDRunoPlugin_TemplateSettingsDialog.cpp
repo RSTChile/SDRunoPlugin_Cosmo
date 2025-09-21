@@ -37,7 +37,7 @@ int SDRunoPlugin_TemplateSettingsDialog::LoadX()
     std::string tmp;
     m_controller.GetConfigurationKey("Template.Settings.X", tmp);
     if (tmp.empty()) { return -1; }
-    return stoi(tmp);
+    try { return stoi(tmp); } catch (...) { return -1; }
 }
 
 int SDRunoPlugin_TemplateSettingsDialog::LoadY()
@@ -45,7 +45,7 @@ int SDRunoPlugin_TemplateSettingsDialog::LoadY()
     std::string tmp;
     m_controller.GetConfigurationKey("Template.Settings.Y", tmp);
     if (tmp.empty()) { return -1; }
-    return stoi(tmp);
+    try { return stoi(tmp); } catch (...) { return -1; }
 }
 
 void SDRunoPlugin_TemplateSettingsDialog::Setup()
