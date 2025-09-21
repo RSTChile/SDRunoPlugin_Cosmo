@@ -19,21 +19,21 @@ SDRunoPlugin_TemplateSettingsDialog::~SDRunoPlugin_TemplateSettingsDialog()
 
 void SDRunoPlugin_TemplateSettingsDialog::Setup()
 {
-    // Center by default: no host calls from GUI thread
+    // Centrar por defecto: sin llamadas al host desde el hilo GUI
     move(nana::API::make_center(dialogFormWidth, dialogFormHeight));
     size(nana::size(dialogFormWidth, dialogFormHeight));
     caption("SDRuno Plugin Cosmo - Settings");
 
-    // Dark background
+    // Fondo oscuro
     this->bgcolor(nana::color(45, 45, 48));
 
-    // Controls
+    // Controles
     titleLbl.caption("Cosmo Plugin Configuration");
     titleLbl.fgcolor(nana::color(220, 220, 220));
     titleLbl.transparent(true);
     titleLbl.text_align(nana::align::center, nana::align_v::center);
 
-    // Texto multilínea y auto-break
+    // Texto multilínea para que no se corte
     infoLbl.caption("Settings and configuration options will be available here.\n(More options coming soon)");
     infoLbl.fgcolor(nana::color(180, 180, 180));
     infoLbl.transparent(true);
