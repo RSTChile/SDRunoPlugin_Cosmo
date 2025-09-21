@@ -82,11 +82,11 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
 	}
 }
 
-// Nota: este método ya no se usa, pero lo dejamos por compatibilidad.
-// Si lo usas, creará el diálogo “stand-alone”.
+// Nota: este método ya no se usa; conservar por compatibilidad.
 void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
 	if (!m_settingsDialog) {
-		m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_controller);
+		// Nueva firma sin controller en el diálogo
+		m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_ui, *this);
 	}
 	m_settingsDialog->show();
 }
