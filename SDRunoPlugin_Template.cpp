@@ -43,12 +43,9 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     m_lastTick = std::chrono::steady_clock::now();
     m_baseDir = BuildBaseDataDir();
 
-    // Adjuntar al primer VRX activo (o 0 si aún no hay activos)
-    if (!AttachToFirstActiveVrx()) {
-        // Fallback temprano a VRX 0: se re–adjuntará automáticamente cuando empiece el streaming
-        m_vrxIndex = 0;
-        try { m_controller.RegisterStreamObserver(m_vrxIndex, this); } catch (...) {}
-    }
+    // Registro SEGURO inicial: VRX 0. Luego en StreamingStarted nos re-adjuntamos al primer VRX ACTIVO.
+    m_vrxIndex = 0;
+    try { m_controller.RegisterStreamObserver(m_vrxIndex, this); } catch (...) {}
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
@@ -71,7 +68,6 @@ void SDRunoPlugin_Template::RequestUnloadAsync() {
     m_unloadRequested.store(true, std::memory_order_release);
 }
 
-// NUCLEO: recibir I/Q del VRX seleccionado
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
     try {
         if (m_unloadRequested.exchange(false, std::memory_order_acq_rel)) {
@@ -81,22 +77,19 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
 
         EnsureUiStarted();
 
-        // Asegurar que estamos en el VRX correcto: si SDRuno nos llama con otro canal, adoptarlo
+        // Adoptar el canal real si difiere del que creemos
         if (static_cast<int>(channel) != m_vrxIndex) {
             m_vrxIndex = static_cast<int>(channel);
         }
 
-        // Si llegaron muestras, estamos en streaming independientemente del evento
         if (!m_isStreaming.exchange(true)) {
             if (m_ui) m_ui->SetStreamingState(true);
         }
 
-        // Aplicar cambios pendientes
         ApplyPendingVrxIfAny();
         ApplyPendingBaseDirIfAny();
         ApplyPendingModeIfAny();
 
-        // Copiar IQ
         std::vector<float> iq;
         iq.reserve(static_cast<size_t>(length) * 2);
         for (int i = 0; i < length; ++i) {
@@ -111,18 +104,17 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
         float lf = CalculateLF(rc, inr);
         float rde = CalculateRDE(rc, inr);
 
-        std::string palimpsestoMsg = DetectPalimpsesto(iq);
+        std::string pal = DetectPalimpsesto(iq);
         std::string msg;
         if (!modoRestrictivo) {
             if (lf > 0.5f && rde > 0.3f)      msg = "¿Y si hay un patrón oculto? NO SÉ. DISIENTO.";
             else if (lf < 0.05f)              msg = "NO SÉ: señal estéril.";
-            else if (!palimpsestoMsg.empty()) msg = palimpsestoMsg;
-        } else if (!palimpsestoMsg.empty())   msg = palimpsestoMsg;
+            else if (!pal.empty())            msg = pal;
+        } else if (!pal.empty())              msg = pal;
 
         UpdateUI(rc, inr, lf, rde, msg, modoRestrictivo);
         LogMetrics(rc, inr, lf, rde, msg);
 
-        // Escribir a disco sólo si "Capturar" está activado
         if (m_captureEnabled.load(std::memory_order_acquire)) {
             if (!m_iqOut.is_open()) {
                 RotateIqFile(m_activeMode);
@@ -130,7 +122,6 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
             AppendIq(iq);
         }
 
-        // Tick ~1s
         auto now = std::chrono::steady_clock::now();
         if (now - m_lastTick > std::chrono::seconds(1)) {
             if (logFile.is_open()) { logFile << "tick,," << lf << "," << rde << ",\"processing\"\n"; logFile.flush(); }
@@ -190,13 +181,12 @@ void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, c
     if (m_ui) { m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo); }
 }
 
-// Eventos del host
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     try {
         switch (ev.GetType()) {
         case UnoEvent::StreamingStarted:
-            // Cuando SDRuno inicia streaming, garantizamos que estamos adjuntos a un VRX ACTIVO
-            AttachToFirstActiveVrx();
+            // Re-adjuntar al primer VRX ACTIVO en cuanto SDRuno empiece a emitir
+            (void)AttachToFirstActiveVrx();
             m_isStreaming.store(true, std::memory_order_release);
             if (m_ui) m_ui->SetStreamingState(true);
             break;
@@ -246,7 +236,6 @@ void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
 
 bool SDRunoPlugin_Template::GetModeRestrictivo() const { return modoRestrictivo; }
 
-// ===== Señales desde GUI =====
 void SDRunoPlugin_Template::SetCaptureEnabled(bool enabled) {
     m_captureEnabled.store(enabled, std::memory_order_release);
     if (!enabled) {
@@ -269,13 +258,11 @@ void SDRunoPlugin_Template::ChangeVrxAsync(int newIndex) {
     m_vrxChangeRequested.store(true, std::memory_order_release);
 }
 
-// ===== Lecturas thread-safe para GUI =====
 std::string SDRunoPlugin_Template::GetBaseDirSafe() const {
     std::lock_guard<std::mutex> lk(m_configMutex);
     return m_baseDir;
 }
 
-// ===== Aplicaciones de cambios pendientes =====
 void SDRunoPlugin_Template::ApplyPendingModeIfAny() {
     if (!m_modeChangeRequested.exchange(false, std::memory_order_acq_rel))
         return;
@@ -314,7 +301,6 @@ void SDRunoPlugin_Template::ApplyPendingVrxIfAny() {
     }
 }
 
-// ===== Utilidades =====
 std::string SDRunoPlugin_Template::BuildTimestamp() {
     std::time_t t = std::time(nullptr);
     std::tm tm{};
@@ -359,11 +345,13 @@ std::string SDRunoPlugin_Template::BuildBaseDataDir() {
 bool SDRunoPlugin_Template::AttachToFirstActiveVrx() {
     try {
         int count = m_controller.GetVRXCount();
+        if (count <= 0) return false;
+
         int firstActive = -1;
         for (int i = 0; i < count; ++i) {
             if (m_controller.GetVRXEnable(i)) { firstActive = i; break; }
         }
-        if (firstActive < 0) return false; // aún no hay VRX activos
+        if (firstActive < 0) return false; // no hay VRX activos aún
 
         if (firstActive != m_vrxIndex) {
             try { m_controller.UnregisterStreamObserver(m_vrxIndex, this); } catch (...) {}
