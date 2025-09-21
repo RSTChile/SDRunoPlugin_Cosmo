@@ -46,13 +46,13 @@ void SDRunoPlugin_TemplateForm::Setup() {
 	});
 
 	// Handle window close event to properly shut down
-	events().unload([this](const nana::arg_unload& arg) {
+	events().unload([this](const nana::arg_unload& /*arg*/) {
 		m_ui.FormClosed();
 	});
 }
 
 void SDRunoPlugin_TemplateForm::Run() {
-	show();
+	this->show();
 	nana::exec();
 }
 
@@ -82,9 +82,10 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
 	}
 }
 
+// Nota: este método ya no se usa, pero lo dejamos por compatibilidad.
+// Si lo usas, creará el diálogo “stand-alone”.
 void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
 	if (!m_settingsDialog) {
-		// Create the settings dialog, passing the controller directly.
 		m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_controller);
 	}
 	m_settingsDialog->show();
