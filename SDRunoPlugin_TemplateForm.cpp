@@ -51,6 +51,16 @@ void SDRunoPlugin_TemplateForm::Setup() {
         m_ui.ShowSettingsDialog();
     });
 
+    // Botón Capturar
+    captureBtn.caption("Capturar");
+    captureBtn.events().click([this]() {
+        m_capturing = !m_capturing;
+        m_ui.ToggleCapture(m_capturing);
+        captureBtn.caption(m_capturing ? "Detener" : "Capturar");
+        // Refrescar estado
+        SetSavePath(m_currentPath);
+    });
+
     // Cierre de ventana principal
     events().unload([this](const nana::arg_unload& /*arg*/) {
         m_ui.FormClosed();
@@ -72,10 +82,10 @@ void SDRunoPlugin_TemplateForm::CreateLedBars() {
         }
     };
 
-    make_bar(60, rcBar);
-    make_bar(90, inrBar);
-    make_bar(120, lfBar);
-    make_bar(150, rdeBar);
+    make_bar(70, rcBar);
+    make_bar(100, inrBar);
+    make_bar(130, lfBar);
+    make_bar(160, rdeBar);
 }
 
 void SDRunoPlugin_TemplateForm::Run() {
@@ -138,10 +148,14 @@ void SDRunoPlugin_TemplateForm::SetSavePath(const std::string& path) {
     if (!m_streaming) {
         estadoValor.caption("Sin Señal");
     } else {
-        if (m_currentPath.empty())
-            estadoValor.caption("Captura de Señal");
-        else
-            estadoValor.caption("Captura de Señal: " + m_currentPath);
+        if (!m_capturing) {
+            estadoValor.caption("Streaming activo (captura detenida)");
+        } else {
+            if (m_currentPath.empty())
+                estadoValor.caption("Captura de Señal");
+            else
+                estadoValor.caption("Captura de Señal: " + m_currentPath);
+        }
     }
 }
 
