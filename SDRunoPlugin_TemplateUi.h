@@ -23,6 +23,7 @@ public:
     void ShowSettingsDialog();
     void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
     void UpdateSavePath(const std::string& path);
+    void SetStreamingState(bool streaming);
 
     int LoadX();
     int LoadY();
