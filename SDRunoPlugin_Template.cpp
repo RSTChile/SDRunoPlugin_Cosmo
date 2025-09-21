@@ -18,7 +18,7 @@
 
 using std::string;
 
-// Conversión segura a UTF-8
+// Safe UTF-8 conversion
 static string WideToUtf8(const std::wstring& w) {
     if (w.empty()) return {};
 #ifdef _WIN32
@@ -37,19 +37,22 @@ static string WideToUtf8(const std::wstring& w) {
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller)
 {
-    // Carpeta base y logging
+    // Logging and base folder
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
     m_lastTick = std::chrono::steady_clock::now();
     m_baseDir = BuildBaseDataDir();
 
-    // Registro SEGURO inicial: VRX 0. Luego en StreamingStarted nos re-adjuntamos al primer VRX ACTIVO.
+    // Proven pattern (DRM/CW/WSPR):
+    // 1) Force IQOUT on VRX 0
+    // 2) Register as AudioProcessor on VRX 0
     m_vrxIndex = 0;
-    try { m_controller.RegisterStreamObserver(m_vrxIndex, this); } catch (...) {}
+    try { m_controller.SetDemodulatorType(m_vrxIndex, IUnoPluginController::DemodulatorIQOUT); } catch (...) {}
+    try { m_controller.RegisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
-    try { m_controller.UnregisterStreamObserver(m_vrxIndex, this); } catch (...) {}
+    try { m_controller.UnregisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
     try { CloseIqFile(); } catch (...) {}
     m_ui.reset();
     if (logFile.is_open()) logFile.close();
@@ -68,7 +71,10 @@ void SDRunoPlugin_Template::RequestUnloadAsync() {
     m_unloadRequested.store(true, std::memory_order_release);
 }
 
-void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
+// Core: capture IQ via AudioProcessorProcess (IQOUT at 192 kS/s, floats interleaved)
+// Note SDRuno swaps I/Q: I = buffer[2*i + 1], Q = buffer[2*i]
+void SDRunoPlugin_Template::AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) {
+    (void)modified; // we do not modify the audio stream
     try {
         if (m_unloadRequested.exchange(false, std::memory_order_acq_rel)) {
             try { m_controller.RequestUnload(this); } catch (...) {}
@@ -77,31 +83,36 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
 
         EnsureUiStarted();
 
-        // Adoptar el canal real si difiere del que creemos
+        // Track reported channel (informational)
         if (static_cast<int>(channel) != m_vrxIndex) {
             m_vrxIndex = static_cast<int>(channel);
         }
 
+        // Mark streaming on first buffer
         if (!m_isStreaming.exchange(true)) {
             if (m_ui) m_ui->SetStreamingState(true);
         }
 
-        ApplyPendingVrxIfAny();
+        // Apply pending changes
         ApplyPendingBaseDirIfAny();
         ApplyPendingModeIfAny();
+        ApplyPendingVrxIfAny(); // re-register on another VRX if requested
 
+        // Copy to IQ vector (I, Q per sample)
         std::vector<float> iq;
         iq.reserve(static_cast<size_t>(length) * 2);
         for (int i = 0; i < length; ++i) {
-            iq.push_back(static_cast<float>(buffer[i].real));
-            iq.push_back(static_cast<float>(buffer[i].imag));
+            float I = buffer[2 * i + 1];
+            float Q = buffer[2 * i + 0];
+            iq.push_back(I);
+            iq.push_back(Q);
         }
 
         if (!haveRef) { UpdateReference(iq); haveRef = true; }
 
-        float rc = CalculateRC(iq);
+        float rc  = CalculateRC(iq);
         float inr = CalculateINR(iq);
-        float lf = CalculateLF(rc, inr);
+        float lf  = CalculateLF(rc, inr);
         float rde = CalculateRDE(rc, inr);
 
         std::string pal = DetectPalimpsesto(iq);
@@ -122,6 +133,7 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
             AppendIq(iq);
         }
 
+        // ~1s heartbeat
         auto now = std::chrono::steady_clock::now();
         if (now - m_lastTick > std::chrono::seconds(1)) {
             if (logFile.is_open()) { logFile << "tick,," << lf << "," << rde << ",\"processing\"\n"; logFile.flush(); }
@@ -185,8 +197,6 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     try {
         switch (ev.GetType()) {
         case UnoEvent::StreamingStarted:
-            // Re-adjuntar al primer VRX ACTIVO en cuanto SDRuno empiece a emitir
-            (void)AttachToFirstActiveVrx();
             m_isStreaming.store(true, std::memory_order_release);
             if (m_ui) m_ui->SetStreamingState(true);
             break;
@@ -236,6 +246,7 @@ void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
 
 bool SDRunoPlugin_Template::GetModeRestrictivo() const { return modoRestrictivo; }
 
+// ===== UI signals =====
 void SDRunoPlugin_Template::SetCaptureEnabled(bool enabled) {
     m_captureEnabled.store(enabled, std::memory_order_release);
     if (!enabled) {
@@ -258,11 +269,13 @@ void SDRunoPlugin_Template::ChangeVrxAsync(int newIndex) {
     m_vrxChangeRequested.store(true, std::memory_order_release);
 }
 
+// ===== Thread-safe reads for UI =====
 std::string SDRunoPlugin_Template::GetBaseDirSafe() const {
     std::lock_guard<std::mutex> lk(m_configMutex);
     return m_baseDir;
 }
 
+// ===== Apply pending changes =====
 void SDRunoPlugin_Template::ApplyPendingModeIfAny() {
     if (!m_modeChangeRequested.exchange(false, std::memory_order_acq_rel))
         return;
@@ -292,15 +305,17 @@ void SDRunoPlugin_Template::ApplyPendingVrxIfAny() {
         return;
     int next = m_pendingVrxIndex.load(std::memory_order_acquire);
     if (next == m_vrxIndex) return;
-    try { m_controller.UnregisterStreamObserver(m_vrxIndex, this); } catch (...) {}
+    try { m_controller.UnregisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
     try {
-        m_controller.RegisterStreamObserver(next, this);
+        m_controller.SetDemodulatorType(next, IUnoPluginController::DemodulatorIQOUT);
+        m_controller.RegisterAudioProcessor(next, this);
         m_vrxIndex = next;
     } catch (...) {
-        try { m_controller.RegisterStreamObserver(m_vrxIndex, this); } catch (...) {}
+        try { m_controller.RegisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
     }
 }
 
+// ===== Utilities =====
 std::string SDRunoPlugin_Template::BuildTimestamp() {
     std::time_t t = std::time(nullptr);
     std::tm tm{};
@@ -340,28 +355,6 @@ std::string SDRunoPlugin_Template::BuildBaseDataDir() {
     std::filesystem::create_directories(p, ec);
     return p.string();
 #endif
-}
-
-bool SDRunoPlugin_Template::AttachToFirstActiveVrx() {
-    try {
-        int count = m_controller.GetVRXCount();
-        if (count <= 0) return false;
-
-        int firstActive = -1;
-        for (int i = 0; i < count; ++i) {
-            if (m_controller.GetVRXEnable(i)) { firstActive = i; break; }
-        }
-        if (firstActive < 0) return false; // no hay VRX activos aún
-
-        if (firstActive != m_vrxIndex) {
-            try { m_controller.UnregisterStreamObserver(m_vrxIndex, this); } catch (...) {}
-            m_controller.RegisterStreamObserver(firstActive, this);
-            m_vrxIndex = firstActive;
-        }
-        return true;
-    } catch (...) {
-        return false;
-    }
 }
 
 void SDRunoPlugin_Template::RotateIqFile(Mode mode) {
