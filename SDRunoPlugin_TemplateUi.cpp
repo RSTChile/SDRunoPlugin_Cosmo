@@ -49,15 +49,19 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
 	// Post shutdown task to GUI thread using nana's affinity mechanism
 	if (m_mainForm) {
 		nana::API::dev::affinity_execute(m_mainForm->handle(), [this]() {
-			// Cerrar primero el diálogo de settings si está abierto
-			if (m_settingsDialog) {
-				m_settingsDialog->close();
-				m_settingsDialog.reset();
-			}
-			// Cerrar la ventana principal
-			if (m_mainForm) {
-				m_mainForm->close();
-				m_mainForm.reset();
+			try {
+				// Cerrar primero el diálogo de settings si está abierto
+				if (m_settingsDialog) {
+					m_settingsDialog->close();
+					m_settingsDialog.reset();
+				}
+				// Cerrar la ventana principal
+				if (m_mainForm) {
+					m_mainForm->close();
+					m_mainForm.reset();
+				}
+			} catch (...) {
+				// Evitar que una excepción salga del hilo GUI
 			}
 			// No usar exit_all(): cerrar nuestras ventanas hace que exec() retorne solo.
 		});
@@ -74,11 +78,13 @@ void SDRunoPlugin_TemplateUi::PostToGuiThread(std::function<void()> task)
 	if (m_shutdownRequested || !m_guiRunning) return;
 	
 	if (m_mainForm) {
-		nana::API::dev::affinity_execute(m_mainForm->handle(), task);
+		nana::API::dev::affinity_execute(m_mainForm->handle(), [t = std::move(task)]() {
+			try { t(); } catch (...) { /* No propagar al host */ }
+		});
 	} else {
 		// Si la main form aún no está lista, encolar la tarea
 		std::lock_guard<std::mutex> lock(m_taskMutex);
-		m_guiTasks.push(task);
+		m_guiTasks.push(std::move(task));
 	}
 }
 
@@ -97,7 +103,7 @@ void SDRunoPlugin_TemplateUi::GuiThreadMain()
 			while (!m_guiTasks.empty()) {
 				auto task = m_guiTasks.front();
 				m_guiTasks.pop();
-				task();
+				try { task(); } catch (...) {}
 			}
 		}
 		
@@ -161,7 +167,7 @@ int SDRunoPlugin_TemplateUi::LoadX()
 	{
 		return -1;
 	}
-	return stoi(tmp);
+	try { return stoi(tmp); } catch (...) { return -1; }
 }
 
 // Cargar Y desde configuración
@@ -173,7 +179,7 @@ int SDRunoPlugin_TemplateUi::LoadY()
 	{
 		return -1;
 	}
-	return stoi(tmp);
+	try { return stoi(tmp); } catch (...) { return -1; }
 }
 
 // Eventos de SDRuno (Unload/Shutdown)
