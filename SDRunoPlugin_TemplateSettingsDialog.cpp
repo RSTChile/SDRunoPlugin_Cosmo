@@ -11,7 +11,7 @@
 
 // Constructor con UI padre y owner form
 SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form)
-    : nana::form(owner_form, nana::appearance(true, false, true, false, false, false, false))
+    : nana::form(owner_form, nana::size(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false))
     , m_parent(&parent)
     , m_controller(controller)
 {
