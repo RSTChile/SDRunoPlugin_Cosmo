@@ -34,7 +34,7 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
     titleLbl.text_align(nana::align::center, nana::align_v::center);
 
     // Texto multilínea para que no se corte
-    infoLbl.caption("Settings and configuration options will be available here.\n(More options coming soon)");
+    infoLbl.caption("Settings and configuration options will be available here.\nData is saved automatically per mode in your Documents/SDRuno/Cosmo folder.");
     infoLbl.fgcolor(nana::color(180, 180, 180));
     infoLbl.transparent(true);
 
