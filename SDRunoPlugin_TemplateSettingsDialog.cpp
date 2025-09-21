@@ -36,14 +36,13 @@ void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
     m_vrxList.events().dbl_click([this](const arg_mouse&) {
         auto sel = m_vrxList.selected();
         if (!sel.empty()) {
-            // index_pair: {size_t cat, size_t item}
             auto ip = sel.front();
             try {
                 auto txt = m_vrxList.at(ip.cat).at(ip.item).text(0);
                 int vrxIndex = std::stoi(txt);
                 m_ui.RequestChangeVrx(vrxIndex);
             } catch (...) {
-                // ignorar parseos fallidos
+                // Ignorar parseos fallidos
             }
         }
     });
@@ -61,7 +60,6 @@ void SDRunoPlugin_TemplateSettingsDialog::PopulateVrxList()
     for (int i = 0; i < count; ++i) {
         bool enabled = false;
         try { enabled = m_controller.GetVRXEnable(i); } catch (...) { enabled = false; }
-        // En esta versión append devuelve void
         cat.append({ std::to_string(i), enabled ? "Yes" : "No" });
     }
 }
@@ -78,4 +76,9 @@ void SDRunoPlugin_TemplateSettingsDialog::close()
     try { m_form.close(); } catch (...) {}
     // Avisar al UI para liberar el shared_ptr
     try { m_ui.SettingsDialogClosed(); } catch (...) {}
+}
+
+nana::native_window_type SDRunoPlugin_TemplateSettingsDialog::handle() const
+{
+    return m_form.handle();
 }
