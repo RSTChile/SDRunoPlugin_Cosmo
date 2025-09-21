@@ -14,8 +14,8 @@ class SDRunoPlugin_TemplateUi;
 class SDRunoPlugin_TemplateSettingsDialog;
 class IUnoPluginController;
 
-#define formWidth  (480)
-#define formHeight (280)
+#define formWidth  (520)
+#define formHeight (300)
 
 class SDRunoPlugin_TemplateForm : public nana::form {
 public:
@@ -41,17 +41,18 @@ private:
     nana::label title_bar_label{ *this };
     nana::label versionLbl{ *this, nana::rectangle(formWidth - 40, formHeight - 20, 40, 16) };
 
-    nana::label rcLabel{ *this, nana::rectangle(20, 60, 60, 20) };
-    nana::label inrLabel{ *this, nana::rectangle(20, 90, 60, 20) };
-    nana::label lfLabel{ *this, nana::rectangle(20, 120, 60, 20) };
-    nana::label rdeLabel{ *this, nana::rectangle(20, 150, 60, 20) };
-    nana::label msgLabel{ *this, nana::rectangle(20, 180, 440, 24) };
+    nana::label rcLabel{ *this, nana::rectangle(20, 70, 60, 20) };
+    nana::label inrLabel{ *this, nana::rectangle(20, 100, 60, 20) };
+    nana::label lfLabel{ *this, nana::rectangle(20, 130, 60, 20) };
+    nana::label rdeLabel{ *this, nana::rectangle(20, 160, 60, 20) };
+    nana::label msgLabel{ *this, nana::rectangle(20, 190, 480, 24) };
 
-    nana::label estadoCaption{ *this, nana::rectangle(20, 215, 60, 18) };
-    nana::label estadoValor{ *this, nana::rectangle(85, 215, 375, 18) };
+    nana::label estadoCaption{ *this, nana::rectangle(20, 225, 60, 18) };
+    nana::label estadoValor{ *this, nana::rectangle(85, 225, 420, 18) };
 
     nana::combox modeCombo{ *this, nana::rectangle(20, 20, 220, 26) };
-    nana::button settingsBtn{ *this, nana::rectangle(250, 20, 100, 26) };
+    nana::button settingsBtn{ *this, nana::rectangle(250, 20, 90, 26) };
+    nana::button captureBtn{ *this, nana::rectangle(350, 20, 120, 26) };
 
     // LED bars
     static constexpr int LEDS = 20;
@@ -69,5 +70,6 @@ private:
 
     // Estado
     bool m_streaming{false};
+    bool m_capturing{false};
     std::string m_currentPath;
 };
