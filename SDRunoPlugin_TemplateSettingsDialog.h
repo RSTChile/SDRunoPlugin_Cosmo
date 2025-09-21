@@ -21,6 +21,9 @@ public:
     void show();
     void close();
 
+    // Exponer el handle de la ventana para ejecutar afinidad en el hilo GUI
+    nana::native_window_type handle() const;
+
 private:
     void BuildUi();
     void PopulateVrxList();
@@ -28,7 +31,7 @@ private:
     SDRunoPlugin_TemplateUi& m_ui;
     IUnoPluginController& m_controller;
 
-    nana::form m_form;
+    nana::form   m_form;
     nana::listbox m_vrxList;
     nana::button m_btnRefresh;
     nana::button m_btnClose;
