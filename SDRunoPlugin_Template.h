@@ -1,17 +1,12 @@
 #pragma once
-
 #include "iunoplugin.h"
 #include "iunostreamobserver.h"
-#include "iunoplugincontroller.h"
-#include "SDRunoPlugin_TemplateForm.h"
-#include "unoevent.h"
+#include <memory>
+#include <atomic>
+#include <fstream>
 #include <vector>
 #include <string>
-#include <fstream>
-#include <cmath>
-#include <memory>
 
-// Forward declarations
 class SDRunoPlugin_TemplateUi;
 
 class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver {
@@ -19,7 +14,7 @@ public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
 
-    // IUnoPlugin overrides
+    // IUnoPlugin override
     void HandleEvent(const UnoEvent& ev) override;
 
     // IUnoStreamObserver override
@@ -37,11 +32,15 @@ public:
     void SetModeRestrictivo(bool restrictivo);
     bool GetModeRestrictivo() const;
 
-    // UI Management
     void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
 private:
+    // Crear la UI en diferido para evitar reentrancia durante CreatePlugin
+    void EnsureUiStarted();
+
+private:
     std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
+    std::atomic<bool> m_uiStarted{false};
     std::ofstream logFile;
     std::vector<float> refSignal;
     bool haveRef;
