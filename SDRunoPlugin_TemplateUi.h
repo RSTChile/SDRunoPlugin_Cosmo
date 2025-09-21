@@ -14,7 +14,7 @@ class SDRunoPlugin_TemplateForm;
 class SDRunoPlugin_TemplateSettingsDialog;
 class UnoEvent;
 
-// UI manager para el plugin Cosmo
+// UI manager
 class SDRunoPlugin_TemplateUi {
 public:
     SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
@@ -25,12 +25,12 @@ public:
     void UpdateSavePath(const std::string& path);
     void SetStreamingState(bool streaming);
 
-    // Acciones solicitadas desde diálogos/GUI
+    // Acciones desde diálogos/GUI
     void ToggleCapture(bool enabled);
     void RequestChangeBaseDir(const std::string& path);
     void RequestChangeVrx(int vrxIndex);
 
-    // Consultas de configuración para mostrar en GUI
+    // Consultas para GUI
     std::string GetBaseDir() const;
 
     int LoadX();
@@ -45,7 +45,7 @@ private:
     std::shared_ptr<SDRunoPlugin_TemplateSettingsDialog> m_settingsDialog;
     IUnoPluginController& m_controller;
 
-    // Gestión del hilo GUI
+    // Hilo GUI
     std::thread m_guiThread;
     std::atomic<bool> m_guiRunning{false};
     std::atomic<bool> m_shutdownRequested{false};
