@@ -32,6 +32,7 @@ SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 void SDRunoPlugin_TemplateUi::StartGuiThread()
 {
     m_guiThread = std::thread([this]() { GuiThreadMain(); });
+    // Esperar a que la ventana principal esté lista para postear tareas
     for (int i = 0; i < 500; ++i) {
         if (m_guiRunning.load() && m_mainForm) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -44,11 +45,17 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
 
     m_shutdownRequested = true;
 
+    if (m_settingsDialog) {
+        // Cerrar settings si está abierta
+        nana::API::dev::affinity_execute(m_settingsDialog->handle(), [dlg = m_settingsDialog]() {
+            try { dlg->close(); } catch (...) {}
+        });
+    }
+
     if (m_mainForm) {
+        // Cerrar explícitamente la ventana; al cerrar la última, nana::exec() retornará
         nana::API::dev::affinity_execute(m_mainForm->handle(), [this]() {
             try { m_mainForm->close(); } catch (...) {}
-            // exit_all termina el loop de nana::exec de este hilo GUI
-            try { nana::API::exit_all(); } catch (...) {}
         });
     }
 
@@ -101,7 +108,7 @@ void SDRunoPlugin_TemplateUi::ShowSettingsDialog()
     PostToGuiThread([this]() {
         if (!m_settingsDialog && m_mainForm) {
             m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, *m_mainForm, m_controller);
-            m_settingsDialog->show(); // El diálogo se auto-puebla con todos los VRX
+            m_settingsDialog->show();
         } else if (m_settingsDialog) {
             m_settingsDialog->show();
         }
