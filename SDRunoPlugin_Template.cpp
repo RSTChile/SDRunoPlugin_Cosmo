@@ -6,7 +6,7 @@
 #include <cmath>
 
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
-    : IUnoPlugin(controller), haveRef(false), modoRestrictivo(true)
+    : IUnoPlugin(controller)
 {
     // Registrar observador de IQ en el canal 0 (VRX por defecto)
     controller.RegisterStreamObserver(0, this);
@@ -14,7 +14,6 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     // Logging
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
-
     // IMPORTANTE: No crear UI aquí. Se hará en diferido al primer callback IQ.
 }
 
@@ -35,13 +34,26 @@ void SDRunoPlugin_Template::EnsureUiStarted() {
     }
 }
 
+void SDRunoPlugin_Template::RequestUnloadAsync() {
+    m_unloadRequested.store(true, std::memory_order_release);
+}
+
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t /*channel*/, const Complex* buffer, int length) {
     try {
+        // Ejecutar unload de forma segura si fue pedido desde el hilo GUI
+        if (m_unloadRequested.exchange(false, std::memory_order_acq_rel)) {
+            try {
+                m_controller.RequestUnload(this);
+            } catch (...) {
+                // Evitar propagar nada al host
+            }
+        }
+
         // Iniciar la UI en diferido al recibir las primeras muestras
         EnsureUiStarted();
 
         std::vector<float> iq;
-        iq.reserve(length * 2);
+        iq.reserve(static_cast<size_t>(length) * 2);
         for (int i = 0; i < length; ++i) {
             iq.push_back(static_cast<float>(buffer[i].real));
             iq.push_back(static_cast<float>(buffer[i].imag));
@@ -118,13 +130,8 @@ float SDRunoPlugin_Template::CalculateINR(const std::vector<float>& iq) {
     return std::min(1.0f, rmse / (norm + 1e-6f));
 }
 
-float SDRunoPlugin_Template::CalculateLF(float rc, float inr) {
-    return rc * (1.0f - inr);
-}
-
-float SDRunoPlugin_Template::CalculateRDE(float rc, float inr) {
-    return rc * inr;
-}
+float SDRunoPlugin_Template::CalculateLF(float rc, float inr) { return rc * (1.0f - inr); }
+float SDRunoPlugin_Template::CalculateRDE(float rc, float inr) { return rc * inr; }
 
 void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg) {
     if (logFile.is_open()) {
@@ -133,9 +140,7 @@ void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde,
     }
 }
 
-void SDRunoPlugin_Template::UpdateReference(const std::vector<float>& iq) {
-    refSignal = iq;
-}
+void SDRunoPlugin_Template::UpdateReference(const std::vector<float>& iq) { refSignal = iq; }
 
 std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& iq) {
     size_t N = iq.size() / 2;
@@ -156,13 +161,8 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
     return "";
 }
 
-void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
-    modoRestrictivo = restrictivo;
-}
-
-bool SDRunoPlugin_Template::GetModeRestrictivo() const {
-    return modoRestrictivo;
-}
+void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) { modoRestrictivo = restrictivo; }
+bool SDRunoPlugin_Template::GetModeRestrictivo() const { return modoRestrictivo; }
 
 void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
     if (m_ui) {
