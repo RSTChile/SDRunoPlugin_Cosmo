@@ -1,6 +1,6 @@
 #include "SDRunoPlugin_Template.h"
 #include "SDRunoPlugin_TemplateUi.h"
-#include "unoevent.h" // Para UnoEvent::ClosingDown
+#include "unoevent.h" // Asegúrate de que este header define UnoEvent y ClosingDown
 #include <algorithm>
 #include <numeric>
 #include <iostream>
@@ -157,4 +157,18 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
     if (nPrimos > 0 && (float)nPicosEnPrimos / nPrimos > 0.2f)
         return "Patrón palimpsesto detectado en índices primos.";
     return "";
+}
+
+void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
+    if (m_ui) {
+        m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+    }
+}
+
+void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
+    modoRestrictivo = restrictivo;
+}
+
+bool SDRunoPlugin_Template::GetModeRestrictivo() const {
+    return modoRestrictivo;
 }
