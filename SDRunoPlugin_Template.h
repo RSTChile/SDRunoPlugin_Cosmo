@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <mutex>
 
 class SDRunoPlugin_TemplateUi;
 
@@ -35,8 +36,14 @@ public:
 
     void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
-    // Señal desde hilo GUI: solicitar unload de forma segura (se ejecuta en hilo del plugin)
+    // Señales desde GUI (asíncronas, aplicadas en el hilo del plugin)
     void RequestUnloadAsync();
+    void SetCaptureEnabled(bool enabled);                  // Botón Capturar
+    void RequestChangeBaseDirAsync(const std::string& p);  // Cambio de carpeta
+    void ChangeVrxAsync(int newIndex);                     // Re-registrar VRX
+
+    // Leídos por la GUI (thread-safe, sólo lectura)
+    std::string GetBaseDirSafe() const;
 
 private:
     void EnsureUiStarted();
@@ -44,11 +51,13 @@ private:
 
     // Gestión de archivos IQ
     enum class Mode { Restrictivo = 0, Funcional = 1 };
-    void ApplyPendingModeIfAny();  // aplicar cambio de modo en hilo del plugin
-    void RotateIqFile(Mode mode);  // cerrar/abrir archivo para el modo
+    void ApplyPendingModeIfAny();   // aplicar cambio de modo en hilo del plugin
+    void ApplyPendingBaseDirIfAny();
+    void ApplyPendingVrxIfAny();
+    void RotateIqFile(Mode mode);   // cerrar/abrir archivo para el modo
     void CloseIqFile();
     void AppendIq(const std::vector<float>& iq);
-    std::string BuildBaseDataDir();               // Documentos\\SDRuno\\Cosmo
+    std::string BuildBaseDataDir();               // C:\ProgramData\CosmoSDRuno\examples
     static std::string BuildTimestamp();
     static std::string ModeToString(Mode m);
 
@@ -76,8 +85,21 @@ private:
     std::atomic<int>  m_pendingMode{0}; // 0=Restrictivo, 1=Funcional
     Mode m_activeMode{Mode::Restrictivo};
 
+    // Captura (escritura a disco)
+    std::atomic<bool> m_captureEnabled{false};
+
     // Archivos IQ
     std::ofstream m_iqOut;
     std::string   m_currentFilePath;
+
+    // Carpeta base (concurrencia protegida)
+    mutable std::mutex m_configMutex;
     std::string   m_baseDir;
+    std::string   m_pendingBaseDir;
+    std::atomic<bool> m_baseDirChangeRequested{false};
+
+    // VRX
+    int m_vrxIndex{0};
+    std::atomic<bool> m_vrxChangeRequested{false};
+    std::atomic<int>  m_pendingVrxIndex{0};
 };
