@@ -34,13 +34,16 @@ void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
 
     // Doble click: elegir VRX
     m_vrxList.events().dbl_click([this](const arg_mouse&) {
-        auto cat = m_vrxList.at(0);
-        if (!cat.empty()) {
-            auto sel = m_vrxList.selected();
-            if (!sel.empty()) {
-                auto it = *sel.begin();
-                int vrxIndex = std::stoi(m_vrxList.at(0).at(it.item).text(0));
+        auto sel = m_vrxList.selected();
+        if (!sel.empty()) {
+            // index_pair: {size_t cat, size_t item}
+            auto ip = sel.front();
+            try {
+                auto txt = m_vrxList.at(ip.cat).at(ip.item).text(0);
+                int vrxIndex = std::stoi(txt);
                 m_ui.RequestChangeVrx(vrxIndex);
+            } catch (...) {
+                // ignorar parseos fallidos
             }
         }
     });
@@ -58,15 +61,14 @@ void SDRunoPlugin_TemplateSettingsDialog::PopulateVrxList()
     for (int i = 0; i < count; ++i) {
         bool enabled = false;
         try { enabled = m_controller.GetVRXEnable(i); } catch (...) { enabled = false; }
-        auto it = cat.append({ std::to_string(i), enabled ? "Yes" : "No" });
-        (void)it;
+        // En esta versión append devuelve void
+        cat.append({ std::to_string(i), enabled ? "Yes" : "No" });
     }
 }
 
 void SDRunoPlugin_TemplateSettingsDialog::show()
 {
     m_form.show();
-    m_form.bring_to_top();
     // Refrescar al abrir
     PopulateVrxList();
 }
