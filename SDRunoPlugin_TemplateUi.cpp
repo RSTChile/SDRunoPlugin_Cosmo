@@ -46,8 +46,11 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
     m_shutdownRequested = true;
 
     if (m_mainForm) {
-        // Cerrar el bucle principal de Nana en el hilo GUI
+        // Cerrar explícitamente la ventana y el bucle de Nana en el hilo GUI
         nana::API::dev::affinity_execute(m_mainForm->handle(), [this]() {
+            try {
+                m_mainForm->close();
+            } catch (...) {}
             try {
                 nana::API::exit_all(); // hace retornar nana::exec()
             } catch (...) {}
@@ -130,6 +133,26 @@ void SDRunoPlugin_TemplateUi::SetStreamingState(bool streaming)
     PostToGuiThread([this, streaming]() {
         if (m_mainForm) { m_mainForm->SetStreaming(streaming); }
     });
+}
+
+void SDRunoPlugin_TemplateUi::ToggleCapture(bool enabled)
+{
+    m_parent.SetCaptureEnabled(enabled);
+}
+
+void SDRunoPlugin_TemplateUi::RequestChangeBaseDir(const std::string& path)
+{
+    m_parent.RequestChangeBaseDirAsync(path);
+}
+
+void SDRunoPlugin_TemplateUi::RequestChangeVrx(int vrxIndex)
+{
+    m_parent.ChangeVrxAsync(vrxIndex);
+}
+
+std::string SDRunoPlugin_TemplateUi::GetBaseDir() const
+{
+    return m_parent.GetBaseDirSafe();
 }
 
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
