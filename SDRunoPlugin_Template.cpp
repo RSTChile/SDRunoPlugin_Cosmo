@@ -48,7 +48,7 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     // Índice de VRX por defecto
     m_vrxIndex = 0;
 
-    // CRÍTICO: iniciar la UI al cargar el plugin para que abra la ventana
+    // Iniciar la UI al cargar el plugin para que abra la ventana
     EnsureUiStarted();
 }
 
@@ -92,9 +92,8 @@ void SDRunoPlugin_Template::ProcessUnloadIfRequested() {
 // Importante: no modificar el audio del host
 void SDRunoPlugin_Template::AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) {
     modified = false; // Nunca alteramos el audio de salida
-
-    if (!m_inIqOut.load(std::memory_order_acquire))
-        return; // Si no estamos en IQOUT (captura inactiva), no procesar
+    if (!m_inIqOut.load(std::memory_order_acquire)) return; // Si no estamos en IQOUT (captura inactiva), no procesar
+    if (buffer == nullptr || length < 2) return;
 
     try {
         EnsureUiStarted();
@@ -112,15 +111,18 @@ void SDRunoPlugin_Template::AudioProcessorProcess(channel_t channel, float* buff
         ApplyPendingModeIfAny();
         ApplyPendingVrxIfAny();
 
-        // SDRuno IQOUT entrega pares intercalados y, en algunas versiones, I/Q invertidos:
-        // I = buffer[2*i + 1], Q = buffer[2*i + 0]
+        // IQOUT: buffer de flotantes intercalados en orden Q, I
+        const int pairs = length / 2;          // length = número de flotantes
+        if (pairs <= 0) return;
+
         std::vector<float> iq;
-        iq.reserve((size_t)length * 2);
-        for (int i = 0; i < length; ++i) {
-            float I = buffer[2 * i + 1];
+        iq.resize((size_t)pairs * 2);
+
+        for (int i = 0; i < pairs; ++i) {
             float Q = buffer[2 * i + 0];
-            iq.push_back(I);
-            iq.push_back(Q);
+            float I = buffer[2 * i + 1];
+            iq[2 * i + 0] = I; // almacenamos como [I, Q]
+            iq[2 * i + 1] = Q;
         }
 
         if (!haveRef) { UpdateReference(iq); haveRef = true; }
