@@ -31,7 +31,7 @@ SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 void SDRunoPlugin_TemplateUi::StartGuiThread()
 {
     m_guiThread = std::thread([this]() { GuiThreadMain(); });
-    // Esperar a que haya ventana creada para poder postear tareas
+    // Esperar a que la ventana principal esté lista para postear tareas
     for (int i = 0; i < 500; ++i) {
         if (m_guiRunning.load() && m_mainForm) break;
         std::this_thread::sleep_for(std::chrono::milliseconds(10));
@@ -45,7 +45,7 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
     m_shutdownRequested = true;
 
     if (m_mainForm) {
-        // Cerrar bucle principal de Nana en el hilo GUI
+        // Cerrar el bucle principal de Nana en el hilo GUI
         nana::API::dev::affinity_execute(m_mainForm->handle(), [this]() {
             try {
                 nana::API::exit_all(); // hace retornar nana::exec()
@@ -55,9 +55,10 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
 
     if (m_guiThread.joinable()) { m_guiThread.join(); }
 
-    // Seguridad: limpiar punteros después de terminar el loop
+    // Seguridad: limpiar punteros tras terminar el loop
     m_settingsDialog.reset();
     m_mainForm.reset();
+    m_guiRunning = false;
 }
 
 void SDRunoPlugin_TemplateUi::PostToGuiThread(std::function<void()> task)
@@ -147,7 +148,7 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
-    // Ask plugin to request unload on the correct thread
+    // Pedir al plugin que solicite unload en el hilo correcto
     bool expected = false;
     if (m_unloadRequested.compare_exchange_strong(expected, true)) {
         m_parent.RequestUnloadAsync();
