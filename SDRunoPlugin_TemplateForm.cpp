@@ -41,13 +41,13 @@ void SDRunoPlugin_TemplateForm::Setup() {
         m_parent.SetModeRestrictivo(restrictivo);
     });
 
-    // Settings button setup
+    // Botón Settings
     settingsBtn.caption("Settings");
     settingsBtn.events().click([this]() {
         m_ui.ShowSettingsDialog();
     });
 
-    // Handle window close event to properly shut down
+    // Cierre de ventana principal
     events().unload([this](const nana::arg_unload& /*arg*/) {
         m_ui.FormClosed();
     });
@@ -84,7 +84,7 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
     }
 }
 
-// Legacy method kept for compatibility
+// Método legado, por compatibilidad
 void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
     if (!m_settingsDialog) {
         m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_ui, *this);
