@@ -117,6 +117,13 @@ void SDRunoPlugin_TemplateUi::UpdateMetrics(float rc, float inr, float lf, float
     });
 }
 
+void SDRunoPlugin_TemplateUi::UpdateSavePath(const std::string& path)
+{
+    PostToGuiThread([this, path]() {
+        if (m_mainForm) { m_mainForm->SetSavePath(path); }
+    });
+}
+
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
 {
     PostToGuiThread([this]() { m_settingsDialog.reset(); });
