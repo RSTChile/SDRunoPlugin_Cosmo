@@ -67,13 +67,13 @@ void SDRunoPlugin_TemplateSettingsDialog::RefreshBaseDir()
 void SDRunoPlugin_TemplateSettingsDialog::FillActiveVrxList()
 {
     vrxCombo.clear();
-    int selectedIdx = 0;
+    int selectOpt = 0;
 
+    int firstActive = -1;
     if (m_controller) {
         int count = 0;
         try { count = m_controller->GetVRXCount(); } catch (...) { count = 0; }
 
-        int firstActive = -1;
         for (int i = 0; i < count; ++i) {
             bool enabled = false;
             try { enabled = m_controller->GetVRXEnable(i); } catch (...) { enabled = false; }
@@ -84,16 +84,22 @@ void SDRunoPlugin_TemplateSettingsDialog::FillActiveVrxList()
         }
 
         if (vrxCombo.the_number_of_options() == 0) {
-            // Si no hay VRX "activos", mostrar todos [0..count-1]
+            // Si ningún VRX reporta enabled aún, lista todos para permitir selección manual
             for (int i = 0; i < count; ++i) vrxCombo.push_back(std::to_string(i));
-            selectedIdx = 0;
+            selectOpt = 0;
         } else {
-            // Seleccionar el primer activo
-            selectedIdx = 0;
+            selectOpt = 0; // primer activo en la lista
         }
     }
 
-    if (vrxCombo.the_number_of_options() > 0) vrxCombo.option(selectedIdx);
+    if (vrxCombo.the_number_of_options() > 0) {
+        vrxCombo.option(selectOpt);
+
+        // APLICAR automáticamente el primer activo si existe
+        if (firstActive >= 0 && m_parent) {
+            m_parent->RequestChangeVrx(firstActive);
+        }
+    }
 }
 
 void SDRunoPlugin_TemplateSettingsDialog::Setup()
@@ -147,7 +153,7 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
         }
     });
 
-    // Inicializar lista de VRX activos
+    // Inicializar lista de VRX activos y auto–aplicar el primero activo
     FillActiveVrxList();
 
     closeBtn.caption("Close");
