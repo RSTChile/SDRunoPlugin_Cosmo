@@ -1,63 +1,28 @@
 #include <sstream>
 #ifdef _WIN32
 #include <Windows.h>
-#include <io.h>
-#include <shlobj.h>
 #endif
 
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include "SDRunoPlugin_TemplateUi.h"
-#include "resource.h"
 
 // Constructor con UI padre y owner form
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form)
+SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, nana::form& owner_form)
     : nana::form(owner_form, nana::size(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false))
     , m_parent(&parent)
-    , m_controller(controller)
-{
-    Setup();
-}
-
-// Constructor stand-alone solo con controller
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller)
-    : nana::form(nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false))
-    , m_parent(nullptr)
-    , m_controller(controller)
 {
     Setup();
 }
 
 SDRunoPlugin_TemplateSettingsDialog::~SDRunoPlugin_TemplateSettingsDialog()
 {
-    // No forzar limpiezas manuales de eventos: Nana se encarga.
-}
-
-int SDRunoPlugin_TemplateSettingsDialog::LoadX()
-{
-    std::string tmp;
-    m_controller.GetConfigurationKey("Template.Settings.X", tmp);
-    if (tmp.empty()) { return -1; }
-    try { return stoi(tmp); } catch (...) { return -1; }
-}
-
-int SDRunoPlugin_TemplateSettingsDialog::LoadY()
-{
-    std::string tmp;
-    m_controller.GetConfigurationKey("Template.Settings.Y", tmp);
-    if (tmp.empty()) { return -1; }
-    try { return stoi(tmp); } catch (...) { return -1; }
+    // Nana limpia sus manejadores al destruir controles
 }
 
 void SDRunoPlugin_TemplateSettingsDialog::Setup()
 {
-    int posX = LoadX();
-    int posY = LoadY();
-    if (posX != -1 && posY != -1) {
-        move(posX, posY);
-    } else {
-        move(nana::API::make_center(dialogFormWidth, dialogFormHeight));
-    }
-
+    // Centrar por defecto: no se leen posiciones desde el host (evita llamadas cross-thread)
+    move(nana::API::make_center(dialogFormWidth, dialogFormHeight));
     size(nana::size(dialogFormWidth, dialogFormHeight));
     caption("SDRuno Plugin Cosmo - Settings");
 
