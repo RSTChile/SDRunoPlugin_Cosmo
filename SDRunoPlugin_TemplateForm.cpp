@@ -4,6 +4,7 @@
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include <sstream>
 #include <iomanip>
+#include <algorithm>
 
 SDRunoPlugin_TemplateForm::SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller, SDRunoPlugin_TemplateUi& ui)
     : nana::form(nana::API::make_center(formWidth, formHeight)),
@@ -24,20 +25,20 @@ void SDRunoPlugin_TemplateForm::Setup() {
     versionLbl.caption("v1.0");
     versionLbl.text_align(nana::align::right, nana::align_v::center);
 
-    rcLabel.caption("RC: --");
-    inrLabel.caption("INR: --");
-    lfLabel.caption("LF: --");
-    rdeLabel.caption("RDE: --");
+    rcLabel.caption("RC:");
+    inrLabel.caption("INR:");
+    lfLabel.caption("LF:");
+    rdeLabel.caption("RDE:");
     msgLabel.caption("");
 
-    savePathCaption.caption("Saving:");
-    savePathValue.caption("(not streaming)");
+    estadoCaption.caption("Estado:");
+    estadoValor.caption("Sin Señal");
 
-    // Ancho extra para ver completo el texto del modo
+    // Combo modo
     modeCombo.push_back("Modo Restrictivo");
     modeCombo.push_back("Modo Funcional-Libre");
     modeCombo.option(0);
-    modeCombo.size(nana::size(200, 26));
+    modeCombo.size(nana::size(220, 26));
 
     modeCombo.events().selected([this](const nana::arg_combox&) {
         bool restrictivo = (modeCombo.option() == 0);
@@ -54,11 +55,42 @@ void SDRunoPlugin_TemplateForm::Setup() {
     events().unload([this](const nana::arg_unload& /*arg*/) {
         m_ui.FormClosed();
     });
+
+    CreateLedBars();
+}
+
+void SDRunoPlugin_TemplateForm::CreateLedBars() {
+    auto make_bar = [&](int y, std::vector<std::unique_ptr<nana::panel<true>>>& barVec) {
+        barVec.clear();
+        for (int i = 0; i < LEDS; ++i) {
+            int x = barStartX + i * (ledSize + ledGap);
+            auto p = std::make_unique<nana::panel<true>>(*this, nana::rectangle(x, y, ledSize, ledSize));
+            p->bgcolor(nana::colors::gray_border);
+            p->transparent(false);
+            p->show();
+            barVec.emplace_back(std::move(p));
+        }
+    };
+
+    make_bar(60, rcBar);
+    make_bar(90, inrBar);
+    make_bar(120, lfBar);
+    make_bar(150, rdeBar);
 }
 
 void SDRunoPlugin_TemplateForm::Run() {
     this->show();
     nana::exec();
+}
+
+void SDRunoPlugin_TemplateForm::UpdateBar(std::vector<std::unique_ptr<nana::panel<true>>>& bar, float value, const nana::color& on, const nana::color& off) {
+    // Clamp 0..1
+    value = std::max(0.0f, std::min(1.0f, value));
+    int lit = static_cast<int>(value * LEDS + 0.5f);
+    if (lit > LEDS) lit = LEDS;
+    for (int i = 0; i < LEDS; ++i) {
+        bar[i]->bgcolor(i < lit ? on : off);
+    }
 }
 
 void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
@@ -67,17 +99,23 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
 
     oss.str(""); oss.clear(); oss << "RC: " << rc;
     rcLabel.caption(oss.str());
+    UpdateBar(rcBar, rc, nana::colors::green, nana::color_rgb(0x303030));
 
     oss.str(""); oss.clear(); oss << "INR: " << inr;
     inrLabel.caption(oss.str());
+    UpdateBar(inrBar, inr, nana::colors::orange, nana::color_rgb(0x303030));
 
     oss.str(""); oss.clear(); oss << "LF: " << lf;
     lfLabel.caption(oss.str());
+    UpdateBar(lfBar, lf, nana::colors::dark_blue, nana::color_rgb(0x303030));
 
     oss.str(""); oss.clear(); oss << "RDE: " << rde;
     rdeLabel.caption(oss.str());
+    UpdateBar(rdeBar, rde, nana::colors::red, nana::color_rgb(0x303030));
 
     msgLabel.caption(msg);
+
+    // Estilos del mensaje según modo
     if (modoRestrictivo) {
         msgLabel.bgcolor(nana::colors::white);
         msgLabel.fgcolor(nana::colors::black);
@@ -96,9 +134,18 @@ void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
 }
 
 void SDRunoPlugin_TemplateForm::SetSavePath(const std::string& path) {
-    if (path.empty()) {
-        savePathValue.caption("(not streaming)");
+    m_currentPath = path;
+    if (!m_streaming) {
+        estadoValor.caption("Sin Señal");
     } else {
-        savePathValue.caption(path);
+        if (m_currentPath.empty())
+            estadoValor.caption("Captura de Señal");
+        else
+            estadoValor.caption("Captura de Señal: " + m_currentPath);
     }
+}
+
+void SDRunoPlugin_TemplateForm::SetStreaming(bool streaming) {
+    m_streaming = streaming;
+    SetSavePath(m_currentPath);
 }
