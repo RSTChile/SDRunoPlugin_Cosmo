@@ -45,7 +45,7 @@ void SDRunoPlugin_TemplateForm::Setup() {
         m_parent.SetModeRestrictivo(restrictivo);
     });
 
-    // Botón Settings
+    // Botón Settings: usar el UI manager (crea el diálogo con 3 parámetros)
     settingsBtn.caption("Settings");
     settingsBtn.events().click([this]() {
         m_ui.ShowSettingsDialog();
@@ -135,10 +135,10 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
     }
 }
 
-// Método legado, por compatibilidad
+// Método legado, actualizado al nuevo constructor (3 parámetros)
 void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
     if (!m_settingsDialog) {
-        m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_ui, *this);
+        m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_ui, *this, m_controller);
     }
     m_settingsDialog->show();
 }
