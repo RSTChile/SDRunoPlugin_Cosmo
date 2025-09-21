@@ -127,7 +127,7 @@ void SDRunoPlugin_TemplateUi::ShowSettingsDialog()
 {
 	PostToGuiThread([this]() {
 		if (!m_settingsDialog && m_mainForm) {
-			// Create as nested form anchored to main form
+			// Create as nested form anchored to main form (propietaria)
 			m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, m_controller, *m_mainForm);
 			m_settingsDialog->show();
 		} else if (m_settingsDialog) {
