@@ -70,7 +70,15 @@ void SDRunoPlugin_TemplateUi::PostToGuiThread(std::function<void()> task)
 {
     if (m_shutdownRequested || !m_guiRunning) return;
     if (m_mainForm) {
-        nana::API::dev::affinity_execute(m_mainForm->handle(), [t = std::move(task)]() { try { t(); } catch (...) {} });
+        // Ejecutar la tarea en el hilo de la ventana y refrescar la UI
+        nana::API::dev::affinity_execute(m_mainForm->handle(), [this, t = std::move(task)]() {
+            try {
+                t();
+                if (m_mainForm) {
+                    nana::API::refresh_window(m_mainForm->handle());
+                }
+            } catch (...) {}
+        });
     } else {
         std::lock_guard<std::mutex> lock(m_taskMutex);
         m_guiTasks.push(std::move(task));
