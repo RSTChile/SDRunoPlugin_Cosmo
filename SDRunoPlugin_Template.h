@@ -1,7 +1,10 @@
 #pragma once
 
+// Orden estable de la API de SDRuno (como en los plugins de JvanKatwijk)
 #include "iunoplugin.h"
+#include "iunoplugincontroller.h"
 #include "iunoaudioprocessor.h"
+
 #include <memory>
 #include <atomic>
 #include <fstream>
@@ -10,7 +13,6 @@
 #include <chrono>
 #include <mutex>
 
-class IUnoPluginController;
 class SDRunoPlugin_TemplateUi;
 
 class SDRunoPlugin_Template : public IUnoPlugin, public IUnoAudioProcessor {
