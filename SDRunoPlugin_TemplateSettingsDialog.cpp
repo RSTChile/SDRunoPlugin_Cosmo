@@ -78,7 +78,7 @@ void SDRunoPlugin_TemplateSettingsDialog::close()
     try { m_ui.SettingsDialogClosed(); } catch (...) {}
 }
 
-nana::native_window_type SDRunoPlugin_TemplateSettingsDialog::handle() const
+nana::window SDRunoPlugin_TemplateSettingsDialog::handle() const
 {
     return m_form.handle();
 }
