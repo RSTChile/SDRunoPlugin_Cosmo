@@ -21,8 +21,8 @@ public:
     void show();
     void close();
 
-    // Exponer el handle de la ventana para ejecutar afinidad en el hilo GUI
-    nana::native_window_type handle() const;
+    // Exponer el handle (nana::window) para affinity_execute
+    nana::window handle() const;
 
 private:
     void BuildUi();
