@@ -6,6 +6,7 @@
 #include <nana/gui/widgets/slider.hpp>
 #include <nana/gui/widgets/label.hpp>
 #include <nana/gui/timer.hpp>
+#include <nana/gui/widgets/panel.hpp>
 #include <nana/gui/programming_interface.hpp>
 #include <unoevent.h>
 
@@ -124,6 +125,13 @@ void SDRunoPlugin_TemplateUi::UpdateSavePath(const std::string& path)
     });
 }
 
+void SDRunoPlugin_TemplateUi::SetStreamingState(bool streaming)
+{
+    PostToGuiThread([this, streaming]() {
+        if (m_mainForm) { m_mainForm->SetStreaming(streaming); }
+    });
+}
+
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
 {
     PostToGuiThread([this]() { m_settingsDialog.reset(); });
@@ -137,13 +145,16 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
     switch (ev.GetType())
     {
     case UnoEvent::StreamingStarted:
+        SetStreamingState(true);
         break;
     case UnoEvent::StreamingStopped:
+        SetStreamingState(false);
         break;
     case UnoEvent::SavingWorkspace:
         break;
     case UnoEvent::ClosingDown:
     {
+        // Si el host va a descargar plugins, primero bajamos el hilo GUI
         StopGuiThread();
         FormClosed();
     }
@@ -155,7 +166,10 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
-    // Pedir al plugin que solicite unload en el hilo correcto
+    // 1) Detener GUI de inmediato (si no lo está)
+    StopGuiThread();
+
+    // 2) Pedir al plugin que solicite unload en el hilo correcto
     bool expected = false;
     if (m_unloadRequested.compare_exchange_strong(expected, true)) {
         m_parent.RequestUnloadAsync();
