@@ -3,7 +3,6 @@
 #include "iunoplugin.h"
 #include "iunoplugincontroller.h"
 #include "iunoaudioprocessor.h"
-#include "iunostreamobserver.h"
 
 #include <memory>
 #include <atomic>
@@ -15,7 +14,7 @@
 
 class SDRunoPlugin_TemplateUi;
 
-class SDRunoPlugin_Template : public IUnoPlugin, public IUnoAudioProcessor, public IUnoStreamObserver {
+class SDRunoPlugin_Template : public IUnoPlugin, public IUnoAudioProcessor {
 public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
@@ -23,11 +22,8 @@ public:
     // IUnoPlugin
     void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoAudioProcessor: no tocamos audio
+    // IUnoAudioProcessor (usado solo cuando Capturar=ON y el VRX está en IQOUT)
     void AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) override;
-
-    // IUnoStreamObserver: IQ crudo por VRX
-    void StreamObserverProcess(channel_t channel, const Complex* buffer, int length) override;
 
     // UI -> core
     void SetModeRestrictivo(bool restrictivo);
@@ -63,6 +59,12 @@ private:
     static std::string ModeToString(Mode m);
     void ProcessUnloadIfRequested(); // descarga segura fuera de callbacks
 
+    // Gestión de IQOUT
+    void EngageIqOutOnVrx(int vrx);     // guarda demod y cambia a IQOUT
+    void RestoreDemodIfNeeded();        // restaura demod guardada
+    void RebindAudioProcessor(int vrx); // registra procesador al VRX activo
+    void UnbindAudioProcessor();        // desregistra si está registrado
+
 private:
     std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
     std::atomic<bool> m_uiStarted{false};
@@ -89,6 +91,13 @@ private:
 
     // Captura
     std::atomic<bool> m_captureEnabled{false};
+    std::atomic<bool> m_audioProcRegistered{false};
+    std::atomic<bool> m_inIqOut{false};
+
+    // Demod guardada para restaurar
+    IUnoPluginController::DemodulatorType m_savedDemodType{IUnoPluginController::DemodulatorNone};
+    int  m_savedDemodVrx{-1};
+    bool m_savedDemodValid{false};
 
     // Archivos IQ
     std::ofstream m_iqOut;
