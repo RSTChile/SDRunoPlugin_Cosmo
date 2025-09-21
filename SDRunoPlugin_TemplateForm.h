@@ -60,7 +60,6 @@ private:
 	nana::paint::image img_sett_down;
 	nana::picture sett_button{ *this, nana::rectangle(0, 0, 40, 15) };
 	void SettingsButton_Click();
-	void SettingsDialog_Closed();
 
 	nana::label rcLabel{ *this, nana::rectangle(20, 60, 220, 22) };
 	nana::label inrLabel{ *this, nana::rectangle(20, 90, 220, 22) };
