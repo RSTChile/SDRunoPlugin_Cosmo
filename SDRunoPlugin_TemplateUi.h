@@ -38,6 +38,7 @@ private:
     std::thread m_guiThread;
     std::atomic<bool> m_guiRunning{false};
     std::atomic<bool> m_shutdownRequested{false};
+    std::atomic<bool> m_unloadRequested{false};
     std::mutex m_taskMutex;
     std::queue<std::function<void()>> m_guiTasks;
     
