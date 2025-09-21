@@ -45,8 +45,11 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     m_lastTick = std::chrono::steady_clock::now();
     m_baseDir = BuildBaseDataDir();
 
-    // No tocar demodulación ni registrarse a audio mientras no se active "Capturar"
+    // Índice de VRX por defecto
     m_vrxIndex = 0;
+
+    // CRÍTICO: iniciar la UI al cargar el plugin para que abra la ventana
+    EnsureUiStarted();
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
@@ -161,6 +164,9 @@ void SDRunoPlugin_Template::AudioProcessorProcess(channel_t channel, float* buff
 
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     try {
+        // Asegurar que la UI esté creada también al recibir eventos del host
+        EnsureUiStarted();
+
         switch (ev.GetType()) {
         case UnoEvent::StreamingStarted:
             if (m_captureEnabled.load(std::memory_order_acquire)) {
