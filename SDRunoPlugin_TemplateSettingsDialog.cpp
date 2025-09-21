@@ -1,97 +1,213 @@
 #include <sstream>
-#ifdef _WIN32
-#include <Windows.h>
-#include <io.h>
-#include <shlobj.h>
-#endif
+#include <chrono>
+#include <nana/gui.hpp>
+#include <nana/gui/widgets/button.hpp>
+#include <nana/gui/widgets/listbox.hpp>
+#include <nana/gui/widgets/slider.hpp>
+#include <nana/gui/widgets/label.hpp>
+#include <nana/gui/timer.hpp>
+#include <nana/gui/programming_interface.hpp>
+#include <unoevent.h>
 
-#include "SDRunoPlugin_TemplateSettingsDialog.h"
+#include "SDRunoPlugin_Template.h"
 #include "SDRunoPlugin_TemplateUi.h"
-#include "resource.h"
+#include "SDRunoPlugin_TemplateForm.h"
+#include "SDRunoPlugin_TemplateSettingsDialog.h"
 
-// Constructor con UI padre y owner form
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form)
-    : nana::form(owner_form, nana::appearance(true, false, true, false, false, false, false))
-    , m_parent(&parent)
-    , m_controller(controller)
+// Ui constructor - start GUI thread and create main window
+SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller) :
+	m_parent(parent),
+	m_mainForm(nullptr),
+	m_settingsDialog(nullptr),
+	m_controller(controller)
 {
-    Setup();
+	StartGuiThread();
 }
 
-// Constructor stand-alone solo con controller
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller)
-    : nana::form(nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false))
-    , m_parent(nullptr)
-    , m_controller(controller)
+// Ui destructor: safely stop GUI thread and clean up
+SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 {
-    Setup();
+	StopGuiThread();
 }
 
-SDRunoPlugin_TemplateSettingsDialog::~SDRunoPlugin_TemplateSettingsDialog()
+void SDRunoPlugin_TemplateUi::StartGuiThread()
 {
-    this->events().destroy.clear();
+	m_guiThread = std::thread([this]() { GuiThreadMain(); });
+	
+	// Wait for GUI thread to be ready and main window created
+	while (!m_guiRunning || !m_mainForm) {
+		std::this_thread::sleep_for(std::chrono::milliseconds(10));
+	}
 }
 
-int SDRunoPlugin_TemplateSettingsDialog::LoadX()
+void SDRunoPlugin_TemplateUi::StopGuiThread()
 {
-    std::string tmp;
-    m_controller.GetConfigurationKey("Template.Settings.X", tmp);
-    if (tmp.empty()) { return -1; }
-    return stoi(tmp);
+	if (!m_guiRunning) return;
+	
+	m_shutdownRequested = true;
+	
+	// Post shutdown task to GUI thread using nana's affinity mechanism
+	if (m_mainForm) {
+		nana::API::dev::affinity_execute(m_mainForm->handle(), [this]() {
+			// Close settings dialog first if open
+			if (m_settingsDialog) {
+				m_settingsDialog->close();
+				m_settingsDialog.reset();
+			}
+			
+			// Close main form
+			if (m_mainForm) {
+				m_mainForm->close();
+				m_mainForm.reset();
+			}
+			
+			// Exit nana event loop
+			nana::API::exit_all();
+		});
+	}
+	
+	// Wait for GUI thread to finish
+	if (m_guiThread.joinable()) {
+		m_guiThread.join();
+	}
 }
 
-int SDRunoPlugin_TemplateSettingsDialog::LoadY()
+void SDRunoPlugin_TemplateUi::PostToGuiThread(std::function<void()> task)
 {
-    std::string tmp;
-    m_controller.GetConfigurationKey("Template.Settings.Y", tmp);
-    if (tmp.empty()) { return -1; }
-    return stoi(tmp);
+	if (m_shutdownRequested || !m_guiRunning) return;
+	
+	if (m_mainForm) {
+		nana::API::dev::affinity_execute(m_mainForm->handle(), task);
+	} else {
+		// If main form not ready yet, queue the task
+		std::lock_guard<std::mutex> lock(m_taskMutex);
+		m_guiTasks.push(task);
+	}
 }
 
-void SDRunoPlugin_TemplateSettingsDialog::Setup()
+void SDRunoPlugin_TemplateUi::GuiThreadMain()
 {
-    int posX = LoadX();
-    int posY = LoadY();
-    if (posX != -1 && posY != -1) {
-        move(posX, posY);
-    } else {
-        // Centrar si no hay posición guardada
-        move(nana::API::make_center(dialogFormWidth, dialogFormHeight));
-    }
+	try {
+		// Create main window on GUI thread
+		CreateMainWindow();
+		
+		// Signal that GUI thread is ready
+		m_guiRunning = true;
+		
+		// Process any queued tasks before starting event loop
+		{
+			std::lock_guard<std::mutex> lock(m_taskMutex);
+			while (!m_guiTasks.empty()) {
+				auto task = m_guiTasks.front();
+				m_guiTasks.pop();
+				task();
+			}
+		}
+		
+		// Run nana event loop - this blocks until exit_all() is called
+		nana::exec();
+	}
+	catch (...) {
+		// Handle any exceptions in GUI thread
+	}
+	
+	m_guiRunning = false;
+}
 
-    size(nana::size(dialogFormWidth, dialogFormHeight));
-    caption("SDRuno Plugin Cosmo - Settings");
+void SDRunoPlugin_TemplateUi::CreateMainWindow()
+{
+	if (!m_mainForm) {
+		m_mainForm = std::make_shared<SDRunoPlugin_TemplateForm>(m_parent, m_controller, *this);
+		m_mainForm->show();
+	}
+}
 
-    // Fondo estilo oscuro similar a SDRuno
-    this->bgcolor(nana::color(45, 45, 48));
+// Show settings dialog - post to GUI thread
+void SDRunoPlugin_TemplateUi::ShowSettingsDialog()
+{
+	PostToGuiThread([this]() {
+		if (!m_settingsDialog && m_mainForm) {
+			// Crear como formulario propietario anclado a la ventana principal
+			m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, m_controller, *m_mainForm);
+			m_settingsDialog->show();
+		} else if (m_settingsDialog) {
+			// Si ya está abierto, traer al frente
+			m_settingsDialog->show();
+		}
+	});
+}
 
-    // Etiqueta título con texto claro y centrado
-    titleLbl.caption("Cosmo Plugin Configuration");
-    titleLbl.fgcolor(nana::color(220, 220, 220));
-    titleLbl.transparent(true);
-    titleLbl.text_align(nana::align::center, nana::align_v::center);
+// Update metrics - post to GUI thread
+void SDRunoPlugin_TemplateUi::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo)
+{
+	PostToGuiThread([this, rc, inr, lf, rde, msg, modoRestrictivo]() {
+		if (m_mainForm) {
+			m_mainForm->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo);
+		}
+	});
+}
 
-    // Etiqueta de información sobre configuración
-    infoLbl.caption("Settings and configuration options will be available here.");
-    infoLbl.fgcolor(nana::color(180, 180, 180));
-    infoLbl.transparent(true);
+// Callback when settings dialog is closed
+void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
+{
+	PostToGuiThread([this]() {
+		m_settingsDialog.reset();
+	});
+}
 
-    // Botón cerrar con estilo SDRuno
-    closeBtn.caption("Close");
-    closeBtn.bgcolor(nana::color(70, 70, 73));
-    closeBtn.fgcolor(nana::color(220, 220, 220));
+// Load X position from configuration
+int SDRunoPlugin_TemplateUi::LoadX()
+{
+	std::string tmp;
+	m_controller.GetConfigurationKey("Template.X", tmp);
+	if (tmp.empty())
+	{
+		return -1;
+	}
+	return stoi(tmp);
+}
 
-    closeBtn.events().click([this]() {
-        close();
-        if (m_parent) {
-            m_parent->SettingsDialogClosed();
-        }
-    });
+// Load Y position from configuration
+int SDRunoPlugin_TemplateUi::LoadY()
+{
+	std::string tmp;
+	m_controller.GetConfigurationKey("Template.Y", tmp);
+	if (tmp.empty())
+	{
+		return -1;
+	}
+	return stoi(tmp);
+}
 
-    // Manejar evento de cierre de ventana para avisar al padre
-    events().unload([this](const nana::arg_unload&) {
-        if (m_parent) {
-            m_parent->SettingsDialogClosed();
-        }
-    });
+// Handle events from SDRuno (including Unload Plugin and Shutdown)
+void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
+{
+	switch (ev.GetType())
+	{
+	case UnoEvent::StreamingStarted:
+		break;
+
+	case UnoEvent::StreamingStopped:
+		break;
+
+	case UnoEvent::SavingWorkspace:
+		break;
+
+	case UnoEvent::ClosingDown:
+		{
+			// Safely close UI on shutdown
+			StopGuiThread();
+			FormClosed();
+		}
+		break;
+
+	default:
+		break;
+	}
+}
+
+// Handle form closed event
+void SDRunoPlugin_TemplateUi::FormClosed()
+{
+	m_controller.RequestUnload(&m_parent);
 }
