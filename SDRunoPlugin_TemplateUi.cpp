@@ -127,11 +127,11 @@ void SDRunoPlugin_TemplateUi::ShowSettingsDialog()
 {
 	PostToGuiThread([this]() {
 		if (!m_settingsDialog && m_mainForm) {
-			// Create as nested form anchored to main form (propietaria)
+			// Crear como formulario propietario anclado a la ventana principal
 			m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, m_controller, *m_mainForm);
 			m_settingsDialog->show();
 		} else if (m_settingsDialog) {
-			// If already open, bring to front
+			// Si ya está abierto, traer al frente
 			m_settingsDialog->show();
 		}
 	});
