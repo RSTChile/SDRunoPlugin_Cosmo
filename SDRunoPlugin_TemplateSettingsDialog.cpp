@@ -3,7 +3,39 @@
 #include "SDRunoPlugin_TemplateForm.h"
 #include <sstream>
 
+#ifdef _WIN32
+#include <Windows.h>
+#include <shlobj.h>
+#endif
+
 using namespace nana;
+
+namespace {
+#ifdef _WIN32
+    static std::string WideToUtf8(const std::wstring& w) {
+        if (w.empty()) return {};
+        int needed = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
+        if (needed <= 0) return {};
+        std::string out; out.resize((size_t)needed);
+        int written = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), out.data(), needed, nullptr, nullptr);
+        if (written <= 0) return {};
+        return out;
+    }
+    static std::string SelectFolderWin32() {
+        BROWSEINFOW bi{};
+        bi.lpszTitle = L"Seleccione carpeta de guardado";
+        LPITEMIDLIST pidl = SHBrowseForFolderW(&bi);
+        if (!pidl) return {};
+        wchar_t path[MAX_PATH]{};
+        bool ok = SHGetPathFromIDListW(pidl, path);
+        CoTaskMemFree(pidl);
+        if (!ok) return {};
+        return WideToUtf8(path);
+    }
+#else
+    static std::string SelectFolderWin32() { return {}; }
+#endif
+}
 
 SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& ui, SDRunoPlugin_TemplateForm& owner, IUnoPluginController& controller)
     : m_ui(ui)
@@ -26,12 +58,10 @@ void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
     m_form.caption("Cosmo - Settings");
     m_title.move(rectangle{ 10, 10, 200, 24 });
 
-    // Lista VRX
     m_vrxList.move(rectangle{ 10, 40, 500, 220 });
     m_vrxList.append_header("VRX", 120);
     m_vrxList.append_header("Enabled", 120);
 
-    // Controles
     m_btnRefresh.move(rectangle{ 10, 270, 100, 30 });
     m_btnFolder.move(rectangle{ 120, 270, 100, 30 });
     m_btnClose.move(rectangle{ 410, 270, 100, 30 });
@@ -39,17 +69,7 @@ void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
     m_folderLabel.move(rectangle{ 10, 310, 500, 24 });
 
     m_btnRefresh.events().click([this]() { PopulateVrxList(); });
-
-    m_btnFolder.events().click([this]() {
-        folderbox fb;
-        auto picks = fb();
-        if (!picks.empty()) {
-            auto path = picks.front().string();
-            m_ui.RequestChangeBaseDir(path);
-            UpdateFolderLabel(path);
-        }
-    });
-
+    m_btnFolder.events().click([this]() { OnPickFolder(); });
     m_btnClose.events().click([this]() { this->close(); });
 
     // Doble click: elegir VRX
@@ -66,6 +86,19 @@ void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
             }
         }
     });
+}
+
+void SDRunoPlugin_TemplateSettingsDialog::OnPickFolder()
+{
+#ifdef _WIN32
+    std::string path = SelectFolderWin32();
+    if (!path.empty()) {
+        m_ui.RequestChangeBaseDir(path);
+        UpdateFolderLabel(path);
+    }
+#else
+    // En otras plataformas, de momento no-op
+#endif
 }
 
 void SDRunoPlugin_TemplateSettingsDialog::PopulateVrxList()
@@ -92,7 +125,6 @@ void SDRunoPlugin_TemplateSettingsDialog::UpdateFolderLabel(const std::string& p
 void SDRunoPlugin_TemplateSettingsDialog::show()
 {
     m_form.show();
-    // Refrescar al abrir
     PopulateVrxList();
     UpdateFolderLabel(m_ui.GetBaseDir());
 }
