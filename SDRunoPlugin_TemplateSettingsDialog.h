@@ -6,7 +6,6 @@
 #include <nana/gui/widgets/button.hpp>
 #include <nana/gui/widgets/label.hpp>
 #include <nana/gui/widgets/panel.hpp>
-#include <nana/gui/filebox.hpp> // folderbox
 #include <memory>
 #include "iunoplugincontroller.h"
 
@@ -27,6 +26,7 @@ private:
     void BuildUi();
     void PopulateVrxList();
     void UpdateFolderLabel(const std::string& path);
+    void OnPickFolder();
 
     SDRunoPlugin_TemplateUi& m_ui;
     IUnoPluginController& m_controller;
