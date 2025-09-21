@@ -170,9 +170,21 @@ void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, c
     }
 }
 
-// Única implementación de HandleEvent: delega en el UI manager
+// HandleEvent endurecido: jamás dejar escapar excepciones al host
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
-    if (m_ui) {
-        m_ui->HandleEvent(ev);
+    try {
+        if (m_ui) {
+            m_ui->HandleEvent(ev);
+        }
+    } catch (const std::exception& ex) {
+        if (logFile.is_open()) {
+            logFile << "0,0,0,0,\"HandleEvent EXCEPTION: " << ex.what() << "\"\n";
+            logFile.flush();
+        }
+    } catch (...) {
+        if (logFile.is_open()) {
+            logFile << "0,0,0,0,\"HandleEvent EXCEPTION: unknown\"\n";
+            logFile.flush();
+        }
     }
 }
