@@ -43,16 +43,14 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     m_lastTick = std::chrono::steady_clock::now();
     m_baseDir = BuildBaseDataDir();
 
-    // Patrón de referencia:
-    // 1) Forzar IQOUT en VRX 0
-    // 2) Registrar AudioProcessor en VRX 0 (SDRuno entregará IQ como "audio")
+    // No tocar la demodulación del usuario (FM/AM/WFM, etc.)
+    // Capturamos IQ por el observador de stream (IQ crudo)
     m_vrxIndex = 0;
-    try { m_controller.SetDemodulatorType(m_vrxIndex, IUnoPluginController::DemodulatorIQOUT); } catch (...) {}
-    try { m_controller.RegisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
+    try { m_controller.RegisterStreamObserver(m_vrxIndex, this); } catch (...) {}
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
-    try { m_controller.UnregisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
+    try { m_controller.UnregisterStreamObserver(m_vrxIndex, this); } catch (...) {}
     try { CloseIqFile(); } catch (...) {}
     m_ui.reset();
     if (logFile.is_open()) logFile.close();
@@ -71,10 +69,13 @@ void SDRunoPlugin_Template::RequestUnloadAsync() {
     m_unloadRequested.store(true, std::memory_order_release);
 }
 
-// Núcleo: capturamos IQ via AudioProcessorProcess con IQOUT (192 kS/s)
-// SDRuno invierte I/Q: I = buffer[2*i + 1], Q = buffer[2*i + 0]
-void SDRunoPlugin_Template::AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) {
-    (void)modified; // No alteramos el stream
+// No-op de audio; explicitamente no modificamos el stream
+void SDRunoPlugin_Template::AudioProcessorProcess(channel_t, float*, int, bool& modified) {
+    modified = false;
+}
+
+// Núcleo de captura: IQ desde el stream observer (no altera audio ni demod)
+void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
     try {
         if (m_unloadRequested.exchange(false, std::memory_order_acq_rel)) {
             try { m_controller.RequestUnload(this); } catch (...) {}
@@ -100,8 +101,8 @@ void SDRunoPlugin_Template::AudioProcessorProcess(channel_t channel, float* buff
         std::vector<float> iq;
         iq.reserve(static_cast<size_t>(length) * 2);
         for (int i = 0; i < length; ++i) {
-            float I = buffer[2 * i + 1];
-            float Q = buffer[2 * i + 0];
+            float I = static_cast<float>(buffer[i].real);
+            float Q = static_cast<float>(buffer[i].imag);
             iq.push_back(I);
             iq.push_back(Q);
         }
@@ -131,7 +132,6 @@ void SDRunoPlugin_Template::AudioProcessorProcess(channel_t channel, float* buff
             AppendIq(iq);
         }
 
-        // Tick ~1s
         auto now = std::chrono::steady_clock::now();
         if (now - m_lastTick > std::chrono::seconds(1)) {
             if (logFile.is_open()) { logFile << "tick,," << lf << "," << rde << ",\"processing\"\n"; logFile.flush(); }
@@ -195,9 +195,8 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     try {
         switch (ev.GetType()) {
         case UnoEvent::StreamingStarted:
-            // Asegurar IQOUT+AudioProcessor al empezar
-            try { m_controller.SetDemodulatorType(m_vrxIndex, IUnoPluginController::DemodulatorIQOUT); } catch (...) {}
-            try { m_controller.RegisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
+            // reforzar registro por si cambió el VRX en SDRuno
+            try { m_controller.RegisterStreamObserver(m_vrxIndex, this); } catch (...) {}
             m_isStreaming.store(true, std::memory_order_release);
             if (m_ui) m_ui->SetStreamingState(true);
             break;
@@ -306,13 +305,12 @@ void SDRunoPlugin_Template::ApplyPendingVrxIfAny() {
         return;
     int next = m_pendingVrxIndex.load(std::memory_order_acquire);
     if (next == m_vrxIndex) return;
-    try { m_controller.UnregisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
+    try { m_controller.UnregisterStreamObserver(m_vrxIndex, this); } catch (...) {}
     try {
-        m_controller.SetDemodulatorType(next, IUnoPluginController::DemodulatorIQOUT);
-        m_controller.RegisterAudioProcessor(next, this);
+        m_controller.RegisterStreamObserver(next, this);
         m_vrxIndex = next;
     } catch (...) {
-        try { m_controller.RegisterAudioProcessor(m_vrxIndex, this); } catch (...) {}
+        try { m_controller.RegisterStreamObserver(m_vrxIndex, this); } catch (...) {}
     }
 }
 
