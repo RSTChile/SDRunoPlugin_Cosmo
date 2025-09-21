@@ -32,6 +32,9 @@ class SDRunoPlugin_TemplateForm : public nana::form
 public:
 	SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller, SDRunoPlugin_TemplateUi& ui);		
 	~SDRunoPlugin_TemplateForm();
+
+	// Declarar Run para que coincida con la definición del .cpp
+	void Run();
 	
 	void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
