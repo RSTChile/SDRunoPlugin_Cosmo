@@ -48,18 +48,13 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
     if (m_mainForm) {
         // Cerrar explícitamente la ventana y el bucle de Nana en el hilo GUI
         nana::API::dev::affinity_execute(m_mainForm->handle(), [this]() {
-            try {
-                m_mainForm->close();
-            } catch (...) {}
-            try {
-                nana::API::exit_all(); // hace retornar nana::exec()
-            } catch (...) {}
+            try { m_mainForm->close(); } catch (...) {}
+            try { nana::API::exit_all(); } catch (...) {}
         });
     }
 
     if (m_guiThread.joinable()) { m_guiThread.join(); }
 
-    // Seguridad: limpiar punteros tras terminar el loop
     m_settingsDialog.reset();
     m_mainForm.reset();
     m_guiRunning = false;
@@ -89,7 +84,7 @@ void SDRunoPlugin_TemplateUi::GuiThreadMain()
                 try { task(); } catch (...) {}
             }
         }
-        nana::exec(); // bloquea hasta exit_all() o cerrar todas las ventanas
+        nana::exec();
     } catch (...) {}
     m_guiRunning = false;
 }
@@ -106,7 +101,8 @@ void SDRunoPlugin_TemplateUi::ShowSettingsDialog()
 {
     PostToGuiThread([this]() {
         if (!m_settingsDialog && m_mainForm) {
-            m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, *m_mainForm);
+            // Pasamos el controlador al diálogo para que consulte VRX activos
+            m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, *m_mainForm, m_controller);
             m_settingsDialog->show();
         } else if (m_settingsDialog) {
             m_settingsDialog->show();
@@ -177,7 +173,6 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
         break;
     case UnoEvent::ClosingDown:
     {
-        // Si el host va a descargar plugins, primero bajamos el hilo GUI
         StopGuiThread();
         FormClosed();
     }
@@ -189,10 +184,8 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
-    // 1) Detener GUI de inmediato (si no lo está)
     StopGuiThread();
 
-    // 2) Pedir al plugin que solicite unload en el hilo correcto
     bool expected = false;
     if (m_unloadRequested.compare_exchange_strong(expected, true)) {
         m_parent.RequestUnloadAsync();
