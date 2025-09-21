@@ -36,13 +36,13 @@ public:
 
     void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
-    // Señales desde GUI (asíncronas, aplicadas en el hilo del plugin)
+    // Señales desde GUI (asíncronas)
     void RequestUnloadAsync();
     void SetCaptureEnabled(bool enabled);                  // Botón Capturar
     void RequestChangeBaseDirAsync(const std::string& p);  // Cambio de carpeta
     void ChangeVrxAsync(int newIndex);                     // Re-registrar VRX
 
-    // Leídos por la GUI (thread-safe, sólo lectura)
+    // Leídos por la GUI (thread-safe)
     std::string GetBaseDirSafe() const;
 
 private:
@@ -61,6 +61,9 @@ private:
     static std::string BuildTimestamp();
     static std::string ModeToString(Mode m);
 
+    // Auto–adjuntar al primer VRX activo
+    bool AttachToFirstActiveVrx();
+
 private:
     std::unique_ptr<SDRunoPlugin_TemplateUi> m_ui;
     std::atomic<bool> m_uiStarted{false};
@@ -72,9 +75,9 @@ private:
     bool modoRestrictivo{true};
 
     // Coordinación de unload
-    std::atomic<bool> m_unloadRequested{false}; // consumido en hilo del plugin
-    std::atomic<bool> m_isUnloading{false};     // una sola vez por ciclo de vida
-    std::atomic<bool> m_closingDown{false};     // se marca en evento ClosingDown
+    std::atomic<bool> m_unloadRequested{false};
+    std::atomic<bool> m_isUnloading{false};
+    std::atomic<bool> m_closingDown{false};
 
     // Telemetría
     std::chrono::steady_clock::time_point m_lastTick{};
@@ -85,7 +88,7 @@ private:
     std::atomic<int>  m_pendingMode{0}; // 0=Restrictivo, 1=Funcional
     Mode m_activeMode{Mode::Restrictivo};
 
-    // Captura (escritura a disco)
+    // Captura
     std::atomic<bool> m_captureEnabled{false};
 
     // Archivos IQ
