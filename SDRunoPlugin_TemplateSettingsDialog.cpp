@@ -9,20 +9,20 @@
 #include "SDRunoPlugin_TemplateUi.h"
 #include "resource.h"
 
-// Constructor para diálogo anidado con padre UI, forma anidada y controller
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form) :
-    nana::nested_form(owner_form, nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false)),
-    m_parent(parent),
-    m_controller(controller)
+// Constructor con UI padre y owner form
+SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form)
+    : nana::form(owner_form, nana::appearance(true, false, true, false, false, false, false))
+    , m_parent(&parent)
+    , m_controller(controller)
 {
     Setup();
 }
 
-// Constructor para diálogo stand-alone solo con controller (alternativo)
-SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller) :
-    nana::form(nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false)),
-    m_parent(nullptr),
-    m_controller(controller)
+// Constructor stand-alone solo con controller
+SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller)
+    : nana::form(nana::API::make_center(dialogFormWidth, dialogFormHeight), nana::appearance(true, false, true, false, false, false, false))
+    , m_parent(nullptr)
+    , m_controller(controller)
 {
     Setup();
 }
@@ -54,6 +54,9 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
     int posY = LoadY();
     if (posX != -1 && posY != -1) {
         move(posX, posY);
+    } else {
+        // Centrar si no hay posición guardada
+        move(nana::API::make_center(dialogFormWidth, dialogFormHeight));
     }
 
     size(nana::size(dialogFormWidth, dialogFormHeight));
@@ -81,14 +84,14 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
     closeBtn.events().click([this]() {
         close();
         if (m_parent) {
-            m_parent.SettingsDialogClosed();
+            m_parent->SettingsDialogClosed();
         }
     });
 
     // Manejar evento de cierre de ventana para avisar al padre
-    events().unload([this](const nana::arg_unload& arg) {
+    events().unload([this](const nana::arg_unload&) {
         if (m_parent) {
-            m_parent.SettingsDialogClosed();
+            m_parent->SettingsDialogClosed();
         }
     });
 }
