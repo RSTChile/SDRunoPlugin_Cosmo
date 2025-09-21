@@ -21,13 +21,14 @@
 
 class SDRunoPlugin_TemplateUi;
 
-class SDRunoPlugin_TemplateSettingsDialog : public nana::nested_form
+// Cambiamos a nana::form para permitir constructor con y sin owner
+class SDRunoPlugin_TemplateSettingsDialog : public nana::form
 {
 public:
-    // Constructor for nested dialog from UI parent and owner form
+    // Constructor con UI padre y owner form
     SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller, nana::form& owner_form);
 
-    // Constructor stand-alone with only controller (optional)
+    // Constructor stand-alone solo con controller (opcional)
     SDRunoPlugin_TemplateSettingsDialog(IUnoPluginController& controller);
 
     ~SDRunoPlugin_TemplateSettingsDialog();
