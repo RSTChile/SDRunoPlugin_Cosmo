@@ -50,20 +50,24 @@ void SDRunoPlugin_TemplateUi::StopGuiThread()
 	if (m_mainForm) {
 		nana::API::dev::affinity_execute(m_mainForm->handle(), [this]() {
 			try {
+				// Cerrar primero el diálogo de settings si está abierto
 				if (m_settingsDialog) {
 					m_settingsDialog->close();
 					m_settingsDialog.reset();
 				}
+				// Cerrar la ventana principal
 				if (m_mainForm) {
 					m_mainForm->close();
 					m_mainForm.reset();
 				}
 			} catch (...) {
-				// swallow
+				// Evitar que una excepción salga del hilo GUI
 			}
+			// No usar exit_all(): cerrar nuestras ventanas hace que exec() retorne solo.
 		});
 	}
 
+	// Esperar a que el hilo GUI termine
 	if (m_guiThread.joinable()) {
 		m_guiThread.join();
 	}
@@ -75,9 +79,10 @@ void SDRunoPlugin_TemplateUi::PostToGuiThread(std::function<void()> task)
 	
 	if (m_mainForm) {
 		nana::API::dev::affinity_execute(m_mainForm->handle(), [t = std::move(task)]() {
-			try { t(); } catch (...) {}
+			try { t(); } catch (...) { /* No propagar al host */ }
 		});
 	} else {
+		// Si la main form aún no está lista, encolar la tarea
 		std::lock_guard<std::mutex> lock(m_taskMutex);
 		m_guiTasks.push(std::move(task));
 	}
@@ -86,9 +91,13 @@ void SDRunoPlugin_TemplateUi::PostToGuiThread(std::function<void()> task)
 void SDRunoPlugin_TemplateUi::GuiThreadMain()
 {
 	try {
+		// Crear ventana principal en hilo GUI
 		CreateMainWindow();
+		
+		// Señalizar que el hilo GUI está listo
 		m_guiRunning = true;
-
+		
+		// Procesar tareas encoladas antes del event loop
 		{
 			std::lock_guard<std::mutex> lock(m_taskMutex);
 			while (!m_guiTasks.empty()) {
@@ -97,11 +106,12 @@ void SDRunoPlugin_TemplateUi::GuiThreadMain()
 				try { task(); } catch (...) {}
 			}
 		}
-
+		
+		// Ejecutar el bucle de eventos de Nana
 		nana::exec();
 	}
 	catch (...) {
-		// swallow
+		// Evitar propagar excepciones al host
 	}
 	
 	m_guiRunning = false;
@@ -115,18 +125,22 @@ void SDRunoPlugin_TemplateUi::CreateMainWindow()
 	}
 }
 
+// Mostrar diálogo de settings - post a hilo GUI
 void SDRunoPlugin_TemplateUi::ShowSettingsDialog()
 {
 	PostToGuiThread([this]() {
 		if (!m_settingsDialog && m_mainForm) {
-			m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, m_controller, *m_mainForm);
+			// Owner = ventana principal; SIN acceder a m_controller desde el hilo GUI
+			m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(*this, *m_mainForm);
 			m_settingsDialog->show();
 		} else if (m_settingsDialog) {
+			// Traer al frente si ya está abierto
 			m_settingsDialog->show();
 		}
 	});
 }
 
+// Actualizar métricas - post a hilo GUI
 void SDRunoPlugin_TemplateUi::UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo)
 {
 	PostToGuiThread([this, rc, inr, lf, rde, msg, modoRestrictivo]() {
@@ -136,6 +150,7 @@ void SDRunoPlugin_TemplateUi::UpdateMetrics(float rc, float inr, float lf, float
 	});
 }
 
+// Callback cuando se cierra el diálogo de settings
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
 {
 	PostToGuiThread([this]() {
@@ -143,49 +158,45 @@ void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
 	});
 }
 
-int SDRunoPlugin_TemplateUi::LoadX()
-{
-	std::string tmp;
-	m_controller.GetConfigurationKey("Template.X", tmp);
-	if (tmp.empty()) { return -1; }
-	try { return stoi(tmp); } catch (...) { return -1; }
-}
+// Cargar X desde configuración (NO tocar m_controller desde GUI)
+int SDRunoPlugin_TemplateUi::LoadX() { return -1; }
 
-int SDRunoPlugin_TemplateUi::LoadY()
-{
-	std::string tmp;
-	m_controller.GetConfigurationKey("Template.Y", tmp);
-	if (tmp.empty()) { return -1; }
-	try { return stoi(tmp); } catch (...) { return -1; }
-}
+// Cargar Y desde configuración (NO tocar m_controller desde GUI)
+int SDRunoPlugin_TemplateUi::LoadY() { return -1; }
 
+// Eventos de SDRuno (Unload/Shutdown)
 void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 {
 	switch (ev.GetType())
 	{
 	case UnoEvent::StreamingStarted:
 		break;
+
 	case UnoEvent::StreamingStopped:
 		break;
+
 	case UnoEvent::SavingWorkspace:
 		break;
+
 	case UnoEvent::ClosingDown:
 	{
-		// cerrar UI de forma segura; pedir unload una sola vez
+		// Cerrar UI de forma segura en shutdown
 		StopGuiThread();
 		FormClosed();
 	}
 	break;
+
 	default:
 		break;
 	}
 }
 
+// Cuando se cierra la forma principal
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
-	// Evitar reentrancias: pedir unload una sola vez
+	// Pedir unload al hilo del plugin, no desde el hilo GUI
 	bool expected = false;
 	if (m_unloadRequested.compare_exchange_strong(expected, true)) {
-		m_controller.RequestUnload(&m_parent);
+		m_parent.RequestUnloadAsync();
 	}
 }
