@@ -29,7 +29,7 @@ SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(IUnoPlu
 
 SDRunoPlugin_TemplateSettingsDialog::~SDRunoPlugin_TemplateSettingsDialog()
 {
-    this->events().destroy.clear();
+    // No forzar limpiezas manuales de eventos: Nana se encarga.
 }
 
 int SDRunoPlugin_TemplateSettingsDialog::LoadX()
@@ -55,28 +55,25 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
     if (posX != -1 && posY != -1) {
         move(posX, posY);
     } else {
-        // Centrar si no hay posición guardada
         move(nana::API::make_center(dialogFormWidth, dialogFormHeight));
     }
 
     size(nana::size(dialogFormWidth, dialogFormHeight));
     caption("SDRuno Plugin Cosmo - Settings");
 
-    // Fondo estilo oscuro similar a SDRuno
+    // Fondo estilo oscuro
     this->bgcolor(nana::color(45, 45, 48));
 
-    // Etiqueta título con texto claro y centrado
+    // Controles
     titleLbl.caption("Cosmo Plugin Configuration");
     titleLbl.fgcolor(nana::color(220, 220, 220));
     titleLbl.transparent(true);
     titleLbl.text_align(nana::align::center, nana::align_v::center);
 
-    // Etiqueta de información sobre configuración
     infoLbl.caption("Settings and configuration options will be available here.");
     infoLbl.fgcolor(nana::color(180, 180, 180));
     infoLbl.transparent(true);
 
-    // Botón cerrar con estilo SDRuno
     closeBtn.caption("Close");
     closeBtn.bgcolor(nana::color(70, 70, 73));
     closeBtn.fgcolor(nana::color(220, 220, 220));
@@ -88,7 +85,7 @@ void SDRunoPlugin_TemplateSettingsDialog::Setup()
         }
     });
 
-    // Avisar al padre cuando se cierra la ventana
+    // Avisar al padre cuando se cierra la ventana (por X o Alt+F4)
     events().unload([this](const nana::arg_unload&) {
         if (m_parent) {
             m_parent->SettingsDialogClosed();
