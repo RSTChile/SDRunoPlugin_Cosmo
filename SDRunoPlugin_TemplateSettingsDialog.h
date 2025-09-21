@@ -21,7 +21,7 @@
 
 class SDRunoPlugin_TemplateUi;
 
-// Cambiamos a nana::form para permitir constructor con y sin owner
+// Usamos nana::form para permitir constructor con y sin owner
 class SDRunoPlugin_TemplateSettingsDialog : public nana::form
 {
 public:
