@@ -4,7 +4,25 @@
 #include <numeric>
 #include <iostream>
 #include <cmath>
-#include <unoevent.h>  // Necesario para usar UnoEvent::ClosingDown y GetType()
+#include <unoevent.h>  // Necesario para usar UnoEvent y GetType()
+#include <filesystem>
+#include <ctime>
+
+#ifdef _WIN32
+#include <Windows.h>
+#include <ShlObj.h>
+#include <KnownFolders.h>
+#endif
+
+using std::string;
+
+static string WideToUtf8(const std::wstring& w) {
+    if (w.empty()) return {};
+    int size = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
+    std::string out(size, '\0');
+    WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), out.data(), size, nullptr, nullptr);
+    return out;
+}
 
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller)
@@ -16,11 +34,17 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
     m_lastTick = std::chrono::steady_clock::now();
+
+    // Base dir para datos
+    m_baseDir = BuildBaseDataDir();
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
     // Detener callbacks primero (protegido)
     try { m_controller.UnregisterStreamObserver(0, this); } catch (...) {}
+
+    // Cerrar archivo IQ
+    try { CloseIqFile(); } catch (...) {}
 
     // Destruir UI después de detener callbacks
     m_ui.reset();
@@ -53,9 +77,13 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t /*channel*/, const C
             return;
         }
 
-        // Iniciar UI perezosamente al recibir primeras muestras
+        // Iniciar UI perezosamente
         EnsureUiStarted();
 
+        // Aplicar cambio de modo pendiente (si viene del hilo GUI)
+        ApplyPendingModeIfAny();
+
+        // Preparar IQ actual
         std::vector<float> iq;
         iq.reserve(static_cast<size_t>(length) * 2);
         for (int i = 0; i < length; ++i) {
@@ -87,6 +115,14 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t /*channel*/, const C
 
         UpdateUI(rc, inr, lf, rde, msg, modoRestrictivo);
         LogMetrics(rc, inr, lf, rde, msg);
+
+        // Abrir archivo si hace falta y anexar IQ
+        if (m_isStreaming.load(std::memory_order_acquire)) {
+            if (!m_iqOut.is_open()) {
+                RotateIqFile(m_activeMode);
+            }
+            AppendIq(iq);
+        }
 
         // Tick cada ~1s para confirmar procesamiento
         auto now = std::chrono::steady_clock::now();
@@ -153,10 +189,24 @@ void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, c
 // Manejo de eventos endurecido: no dejar escapar excepciones al host
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     try {
-        // Marcar ClosingDown para evitar solicitar unload durante el cierre
-        if (ev.GetType() == UnoEvent::ClosingDown) {
+        switch (ev.GetType()) {
+        case UnoEvent::StreamingStarted:
+            m_isStreaming.store(true, std::memory_order_release);
+            // Al iniciar streaming, forzar rotación a un nuevo archivo
+            m_modeChangeRequested.store(true, std::memory_order_release);
+            m_pendingMode.store(modoRestrictivo ? 0 : 1, std::memory_order_release);
+            break;
+        case UnoEvent::StreamingStopped:
+            m_isStreaming.store(false, std::memory_order_release);
+            CloseIqFile();
+            break;
+        case UnoEvent::ClosingDown:
             m_closingDown.store(true, std::memory_order_release);
+            break;
+        default:
+            break;
         }
+
         if (m_ui) { m_ui->HandleEvent(ev); }
     } catch (const std::exception& ex) {
         if (logFile.is_open()) {
@@ -188,5 +238,101 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
     return "";
 }
 
-void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) { modoRestrictivo = restrictivo; }
+void SDRunoPlugin_Template::SetModeRestrictivo(bool restrictivo) {
+    modoRestrictivo = restrictivo;
+    m_pendingMode.store(restrictivo ? 0 : 1, std::memory_order_release);
+    m_modeChangeRequested.store(true, std::memory_order_release);
+}
+
 bool SDRunoPlugin_Template::GetModeRestrictivo() const { return modoRestrictivo; }
+
+// ===== Archivos IQ =====
+
+void SDRunoPlugin_Template::ApplyPendingModeIfAny() {
+    if (!m_modeChangeRequested.exchange(false, std::memory_order_acq_rel))
+        return;
+    Mode newMode = (m_pendingMode.load(std::memory_order_acquire) == 0) ? Mode::Restrictivo : Mode::Funcional;
+    if (newMode != m_activeMode || !m_iqOut.is_open()) {
+        RotateIqFile(newMode);
+        m_activeMode = newMode;
+    }
+}
+
+std::string SDRunoPlugin_Template::BuildTimestamp() {
+    std::time_t t = std::time(nullptr);
+    std::tm tm{};
+#ifdef _WIN32
+    localtime_s(&tm, &t);
+#else
+    tm = *std::localtime(&t);
+#endif
+    char buf[32];
+    std::snprintf(buf, sizeof(buf), "%04d%02d%02d_%02d%02d%02d",
+                  tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday,
+                  tm.tm_hour, tm.tm_min, tm.tm_sec);
+    return buf;
+}
+
+std::string SDRunoPlugin_Template::ModeToString(Mode m) {
+    return (m == Mode::Restrictivo) ? "restrictivo" : "funcional";
+}
+
+std::string SDRunoPlugin_Template::BuildBaseDataDir() {
+#ifdef _WIN32
+    PWSTR pathW = nullptr;
+    string base;
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, KF_FLAG_DEFAULT, nullptr, &pathW))) {
+        base = WideToUtf8(pathW);
+        CoTaskMemFree(pathW);
+    } else {
+        char* home = std::getenv("USERPROFILE");
+        base = home ? string(home) : string(".");
+    }
+    std::filesystem::path p = std::filesystem::path(base) / "SDRuno" / "Cosmo";
+    std::error_code ec;
+    std::filesystem::create_directories(p, ec);
+    return p.string();
+#else
+    std::filesystem::path p = std::filesystem::path("CosmoData");
+    std::error_code ec;
+    std::filesystem::create_directories(p, ec);
+    return p.string();
+#endif
+}
+
+void SDRunoPlugin_Template::RotateIqFile(Mode mode) {
+    try {
+        CloseIqFile();
+        const auto ts = BuildTimestamp();
+        std::filesystem::path fname = std::filesystem::path(m_baseDir) /
+            ("cosmo_" + ts + "_" + ModeToString(mode) + ".iqf");
+        m_iqOut.open(fname, std::ios::binary | std::ios::out);
+        m_currentFilePath = fname.string();
+        if (m_ui) {
+            // Informar nueva ruta al UI
+            try { m_ui->UpdateSavePath(m_currentFilePath); } catch (...) {}
+        }
+    } catch (...) {
+        // Registrar en log si algo falla
+        if (logFile.is_open()) logFile << "0,0,0,0,\"RotateIqFile failed\"\n";
+    }
+}
+
+void SDRunoPlugin_Template::CloseIqFile() {
+    if (m_iqOut.is_open()) {
+        try { m_iqOut.flush(); } catch (...) {}
+        try { m_iqOut.close(); } catch (...) {}
+    }
+}
+
+void SDRunoPlugin_Template::AppendIq(const std::vector<float>& iq) {
+    if (!m_iqOut.is_open()) return;
+    const char* data = reinterpret_cast<const char*>(iq.data());
+    size_t bytes = iq.size() * sizeof(float);
+    try {
+        m_iqOut.write(data, static_cast<std::streamsize>(bytes));
+    } catch (...) {
+        // En caso de error de IO, cerrar para evitar más problemas
+        try { CloseIqFile(); } catch (...) {}
+    }
+}
