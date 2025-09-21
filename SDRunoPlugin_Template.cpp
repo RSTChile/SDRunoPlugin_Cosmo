@@ -4,11 +4,13 @@
 #include <numeric>
 #include <iostream>
 #include <cmath>
-#include <unoevent.h>  // Necesario para usar UnoEvent y GetType()
+#include <unoevent.h>
 #include <filesystem>
 #include <ctime>
 
 #ifdef _WIN32
+// Evita que Windows.h defina macros min/max que rompen std::min/std::max
+#define NOMINMAX
 #include <Windows.h>
 #include <ShlObj.h>
 #include <KnownFolders.h>
@@ -154,7 +156,7 @@ float SDRunoPlugin_Template::CalculateRC(const std::vector<float>& iq) {
 }
 
 float SDRunoPlugin_Template::CalculateINR(const std::vector<float>& iq) {
-    size_t N = std::min(iq.size(), refSignal.size());
+    size_t N = (std::min)(iq.size(), refSignal.size()); // evitar macro min de Windows
     if (N == 0) return 1.0f;
     float err = 0.0f, refMag = 0.0f;
     for (size_t i = 0; i < N; ++i) {
@@ -165,7 +167,7 @@ float SDRunoPlugin_Template::CalculateINR(const std::vector<float>& iq) {
     if (refMag == 0.0f) return 1.0f;
     float rmse = std::sqrt(err / static_cast<float>(N));
     float norm = std::sqrt(refMag / static_cast<float>(N));
-    return std::min(1.0f, rmse / (norm + 1e-6f));
+    return (std::min)(1.0f, rmse / (norm + 1e-6f)); // evitar macro min de Windows
 }
 
 float SDRunoPlugin_Template::CalculateLF(float rc, float inr) { return rc * (1.0f - inr); }
@@ -279,16 +281,16 @@ std::string SDRunoPlugin_Template::ModeToString(Mode m) {
 
 std::string SDRunoPlugin_Template::BuildBaseDataDir() {
 #ifdef _WIN32
+    // Usar ProgramData\CosmoSDRuno\examples como carpeta base
     PWSTR pathW = nullptr;
     string base;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_Documents, KF_FLAG_DEFAULT, nullptr, &pathW))) {
+    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &pathW))) {
         base = WideToUtf8(pathW);
         CoTaskMemFree(pathW);
     } else {
-        char* home = std::getenv("USERPROFILE");
-        base = home ? string(home) : string(".");
+        base = "C:\\ProgramData";
     }
-    std::filesystem::path p = std::filesystem::path(base) / "SDRuno" / "Cosmo";
+    std::filesystem::path p = std::filesystem::path(base) / "CosmoSDRuno" / "examples";
     std::error_code ec;
     std::filesystem::create_directories(p, ec);
     return p.string();
