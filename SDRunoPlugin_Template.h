@@ -35,7 +35,7 @@ public:
 
     void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
-    // Signal from GUI thread: request unload safely (will run on plugin thread)
+    // Señal desde hilo GUI: solicitar unload de forma segura (se ejecuta en hilo del plugin)
     void RequestUnloadAsync();
 
 private:
@@ -50,11 +50,11 @@ private:
     bool haveRef{false};
     bool modoRestrictivo{true};
 
-    // Unload coordination
-    std::atomic<bool> m_unloadRequested{false}; // consumed on plugin thread
-    std::atomic<bool> m_isUnloading{false};     // set once per lifecycle
-    std::atomic<bool> m_closingDown{false};     // set on ClosingDown event
+    // Coordinación de unload
+    std::atomic<bool> m_unloadRequested{false}; // consumido en hilo del plugin
+    std::atomic<bool> m_isUnloading{false};     // una sola vez por ciclo de vida
+    std::atomic<bool> m_closingDown{false};     // se marca en evento ClosingDown
 
-    // Telemetry
+    // Telemetría
     std::chrono::steady_clock::time_point m_lastTick{};
 };
