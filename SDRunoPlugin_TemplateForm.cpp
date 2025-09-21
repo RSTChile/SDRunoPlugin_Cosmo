@@ -100,6 +100,8 @@ void SDRunoPlugin_TemplateForm::UpdateBar(std::vector<std::unique_ptr<nana::pane
     if (lit > LEDS) lit = LEDS;
     for (int i = 0; i < LEDS; ++i) {
         bar[i]->bgcolor(i < lit ? on : off);
+        // Forzar repintado del “LED” actualizado
+        bar[i]->refresh();
     }
 }
 
@@ -133,9 +135,11 @@ void SDRunoPlugin_TemplateForm::UpdateMetrics(float rc, float inr, float lf, flo
         msgLabel.bgcolor(nana::colors::light_yellow);
         msgLabel.fgcolor(nana::colors::dark_blue);
     }
+
+    // Forzar repintado de la ventana tras actualizar métricas
+    nana::API::refresh_window(handle());
 }
 
-// Método legado, actualizado al nuevo constructor (3 parámetros)
 void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
     if (!m_settingsDialog) {
         m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_ui, *this, m_controller);
@@ -157,6 +161,8 @@ void SDRunoPlugin_TemplateForm::SetSavePath(const std::string& path) {
                 estadoValor.caption("Captura de Señal: " + m_currentPath);
         }
     }
+    // Refrescar estado mostrado
+    nana::API::refresh_window(handle());
 }
 
 void SDRunoPlugin_TemplateForm::SetStreaming(bool streaming) {
