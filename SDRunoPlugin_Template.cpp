@@ -35,7 +35,7 @@ void SDRunoPlugin_Template::EnsureUiStarted() {
     }
 }
 
-void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
+void SDRunoPlugin_Template::StreamObserverProcess(channel_t /*channel*/, const Complex* buffer, int length) {
     try {
         // Iniciar la UI en diferido al recibir las primeras muestras
         EnsureUiStarted();
@@ -95,7 +95,7 @@ float SDRunoPlugin_Template::CalculateRC(const std::vector<float>& iq) {
     for (size_t i = 0; i < N; ++i) {
         float I = iq[2 * i];
         float Q = iq[2 * i + 1];
-        float mag = sqrt(I * I + Q * Q);
+        float mag = std::sqrt(I * I + Q * Q);
         total += mag;
         if (i > N * 3 / 4) band += mag;
     }
@@ -113,8 +113,8 @@ float SDRunoPlugin_Template::CalculateINR(const std::vector<float>& iq) {
         refMag += refSignal[i] * refSignal[i];
     }
     if (refMag == 0.0f) return 1.0f;
-    float rmse = sqrt(err / N);
-    float norm = sqrt(refMag / N);
+    float rmse = std::sqrt(err / static_cast<float>(N));
+    float norm = std::sqrt(refMag / static_cast<float>(N));
     return std::min(1.0f, rmse / (norm + 1e-6f));
 }
 
@@ -147,7 +147,7 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
             nPrimos++;
             float I = iq[2 * i];
             float Q = iq[2 * i + 1];
-            float mag = sqrt(I * I + Q * Q);
+            float mag = std::sqrt(I * I + Q * Q);
             if (mag > 2.0f) nPicosEnPrimos++;
         }
     }
