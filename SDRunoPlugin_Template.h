@@ -1,6 +1,6 @@
 #pragma once
 
-// Keep API include order stable like the reference plugins
+// Orden estable de la API (como en plugins de referencia)
 #include "iunoplugin.h"
 #include "iunoplugincontroller.h"
 #include "iunoaudioprocessor.h"
@@ -23,10 +23,10 @@ public:
     // IUnoPlugin
     void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoAudioProcessor (IQOUT at 192 kS/s, floats interleaved with I/Q swapped by SDRuno)
+    // IUnoAudioProcessor (IQOUT a 192 kS/s; floats intercalados con I/Q invertidos por SDRuno)
     void AudioProcessorProcess(channel_t channel, float* buffer, int length, bool& modified) override;
 
-    // UI -> core
+    // Señales desde la UI
     void SetModeRestrictivo(bool restrictivo);
     bool GetModeRestrictivo() const;
     void SetCaptureEnabled(bool enabled);
@@ -35,7 +35,7 @@ public:
     void RequestUnloadAsync();
     std::string GetBaseDirSafe() const;
 
-    // Metrics helpers
+    // Métricas/helpers
     void LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg);
     float CalculateRC(const std::vector<float>& iq);
     float CalculateINR(const std::vector<float>& iq);
@@ -64,39 +64,39 @@ private:
     std::atomic<bool> m_uiStarted{false};
     std::ofstream logFile;
 
-    // Metrics
+    // Métricas
     std::vector<float> refSignal;
     bool haveRef{false};
     bool modoRestrictivo{true};
 
-    // Unload coordination
+    // Coordinación de unload
     std::atomic<bool> m_unloadRequested{false};
     std::atomic<bool> m_isUnloading{false};
     std::atomic<bool> m_closingDown{false};
 
-    // Telemetry
+    // Telemetría
     std::chrono::steady_clock::time_point m_lastTick{};
 
-    // Streaming / Mode
+    // Streaming / Modo
     std::atomic<bool> m_isStreaming{false};
     std::atomic<bool> m_modeChangeRequested{false};
     std::atomic<int>  m_pendingMode{0}; // 0=Restrictivo, 1=Funcional
     Mode m_activeMode{Mode::Restrictivo};
 
-    // Capture
+    // Captura
     std::atomic<bool> m_captureEnabled{false};
 
-    // IQ files
+    // Archivos IQ
     std::ofstream m_iqOut;
     std::string   m_currentFilePath;
 
-    // Base folder (protected)
+    // Carpeta base (protegida)
     mutable std::mutex m_configMutex;
     std::string   m_baseDir;
     std::string   m_pendingBaseDir;
     std::atomic<bool> m_baseDirChangeRequested{false};
 
-    // VRX (use VRX 0 by default like the examples)
+    // VRX (VRX 0 por defecto; se puede cambiar desde Settings)
     int m_vrxIndex{0};
     std::atomic<bool> m_vrxChangeRequested{false};
     std::atomic<int>  m_pendingVrxIndex{0};
