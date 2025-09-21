@@ -8,69 +8,85 @@
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller), haveRef(false), modoRestrictivo(true)
 {
+    // Registrar observador de IQ en el canal 0 (VRX por defecto)
     controller.RegisterStreamObserver(0, this);
+
+    // Logging
     logFile.open("cosmo_metrics_log.csv", std::ios::out);
     logFile << "RC,INR,LF,RDE,MSG\n";
-    
-    // Create UI manager and show main window immediately
-    m_ui = std::make_unique<SDRunoPlugin_TemplateUi>(*this, controller);
+
+    // IMPORTANTE: No crear UI aquí. Se hará en diferido al primer callback IQ.
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
-    // Unregister stream observer first
+    // Detener callbacks primero
     m_controller.UnregisterStreamObserver(0, this);
-    // UI manager destructor will handle proper window cleanup
+
+    // Destruir UI después de detener callbacks
     m_ui.reset();
+
     if (logFile.is_open()) logFile.close();
 }
 
-void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
-    switch (ev.GetType()) {
-    case UnoEvent::ClosingDown:
-        // Close the main form properly when SDRuno is closing
-        m_form.close();
-        break;
-    default:
-        break;
+void SDRunoPlugin_Template::EnsureUiStarted() {
+    if (!m_uiStarted.exchange(true)) {
+        // Crear UI manager y arrancar su bucle/gestión interna
+        m_ui = std::make_unique<SDRunoPlugin_TemplateUi>(*this, m_controller);
     }
 }
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* buffer, int length) {
-    std::vector<float> iq;
-    iq.reserve(length * 2);
-    for (int i = 0; i < length; ++i) {
-        iq.push_back((float)buffer[i].real);  // <- corregido, sin paréntesis
-        iq.push_back((float)buffer[i].imag);  // <- corregido, sin paréntesis
-    }
+    try {
+        // Iniciar la UI en diferido al recibir las primeras muestras
+        EnsureUiStarted();
 
-    if (!haveRef) {
-        UpdateReference(iq);
-        haveRef = true;
-    }
-
-    float rc = CalculateRC(iq);
-    float inr = CalculateINR(iq);
-    float lf = CalculateLF(rc, inr);
-    float rde = CalculateRDE(rc, inr);
-
-    std::string palimpsestoMsg = DetectPalimpsesto(iq);
-
-    std::string msg;
-    // --- Triple check: uso correcto de la variable modoRestrictivo ---
-    if (!modoRestrictivo) {
-        if (lf > 0.5f && rde > 0.3f) {
-            msg = "¿Y si hay un patrón oculto? NO SÉ. DISIENTO.";
-        } else if (lf < 0.05f) {
-            msg = "NO SÉ: señal estéril.";
-        } else if (!palimpsestoMsg.empty()) {
-            msg = palimpsestoMsg;
+        std::vector<float> iq;
+        iq.reserve(length * 2);
+        for (int i = 0; i < length; ++i) {
+            iq.push_back(static_cast<float>(buffer[i].real));
+            iq.push_back(static_cast<float>(buffer[i].imag));
         }
-    } else {
-        if (!palimpsestoMsg.empty()) msg = palimpsestoMsg;
-    }
 
-    UpdateUI(rc, inr, lf, rde, msg, modoRestrictivo);
-    LogMetrics(rc, inr, lf, rde, msg);
+        if (!haveRef) {
+            UpdateReference(iq);
+            haveRef = true;
+        }
+
+        float rc = CalculateRC(iq);
+        float inr = CalculateINR(iq);
+        float lf = CalculateLF(rc, inr);
+        float rde = CalculateRDE(rc, inr);
+
+        std::string palimpsestoMsg = DetectPalimpsesto(iq);
+
+        std::string msg;
+        if (!modoRestrictivo) {
+            if (lf > 0.5f && rde > 0.3f) {
+                msg = "¿Y si hay un patrón oculto? NO SÉ. DISIENTO.";
+            } else if (lf < 0.05f) {
+                msg = "NO SÉ: señal estéril.";
+            } else if (!palimpsestoMsg.empty()) {
+                msg = palimpsestoMsg;
+            }
+        } else {
+            if (!palimpsestoMsg.empty()) msg = palimpsestoMsg;
+        }
+
+        UpdateUI(rc, inr, lf, rde, msg, modoRestrictivo);
+        LogMetrics(rc, inr, lf, rde, msg);
+    }
+    catch (const std::exception& ex) {
+        if (logFile.is_open()) {
+            logFile << "0,0,0,0,\"EXCEPTION: " << ex.what() << "\"\n";
+            logFile.flush();
+        }
+    }
+    catch (...) {
+        if (logFile.is_open()) {
+            logFile << "0,0,0,0,\"EXCEPTION: unknown\"\n";
+            logFile.flush();
+        }
+    }
 }
 
 float SDRunoPlugin_Template::CalculateRC(const std::vector<float>& iq) {
@@ -154,7 +170,7 @@ void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, c
     }
 }
 
-// Handle events from SDRuno (including plugin unload and shutdown)
+// Única implementación de HandleEvent: delega en el UI manager
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     if (m_ui) {
         m_ui->HandleEvent(ev);
