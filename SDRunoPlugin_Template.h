@@ -34,11 +34,11 @@ public:
 
     void UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
 
-    // Señal desde el hilo GUI: pedir unload de forma segura (se ejecutará en el hilo del plugin)
+    // Signal from GUI thread: request unload safely (will run on plugin thread)
     void RequestUnloadAsync();
 
 private:
-    // Crear la UI en diferido para evitar reentrancia durante CreatePlugin
+    // Deferred UI creation
     void EnsureUiStarted();
 
 private:
@@ -49,8 +49,10 @@ private:
     bool haveRef{false};
     bool modoRestrictivo{true};
 
-    // Flag pedido por el hilo GUI para ejecutar RequestUnload en el hilo del plugin
-    std::atomic<bool> m_unloadRequested{false};
+    // Unload coordination
+    std::atomic<bool> m_unloadRequested{false}; // consumed on plugin thread
+    std::atomic<bool> m_isUnloading{false};     // set once per lifecycle
+    std::atomic<bool> m_closingDown{false};     // set on ClosingDown event
 
     void UpdateReference(const std::vector<float>& iq);
 };
