@@ -30,11 +30,14 @@ void SDRunoPlugin_TemplateForm::Setup() {
     rdeLabel.caption("RDE: --");
     msgLabel.caption("");
 
+    savePathCaption.caption("Saving:");
+    savePathValue.caption("(not streaming)");
+
     // Ancho extra para ver completo el texto del modo
     modeCombo.push_back("Modo Restrictivo");
     modeCombo.push_back("Modo Funcional-Libre");
     modeCombo.option(0);
-    modeCombo.size(nana::size(180, 26));
+    modeCombo.size(nana::size(200, 26));
 
     modeCombo.events().selected([this](const nana::arg_combox&) {
         bool restrictivo = (modeCombo.option() == 0);
@@ -90,4 +93,12 @@ void SDRunoPlugin_TemplateForm::SettingsButton_Click() {
         m_settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_ui, *this);
     }
     m_settingsDialog->show();
+}
+
+void SDRunoPlugin_TemplateForm::SetSavePath(const std::string& path) {
+    if (path.empty()) {
+        savePathValue.caption("(not streaming)");
+    } else {
+        savePathValue.caption(path);
+    }
 }
