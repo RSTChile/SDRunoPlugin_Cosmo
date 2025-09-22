@@ -26,7 +26,7 @@ public:
     // IUnoPlugin
     virtual void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoStreamProcessor (reemplaza el uso de IUnoAudioProcessor)
+    // IUnoStreamProcessor
     virtual void StreamProcessorProcess(channel_t channel, Complex* buffer, int length, bool& modified) override;
 
     // UI hooks
@@ -58,9 +58,9 @@ private:
     void CloseIqFile();
     void AppendIq(const std::vector<float>& iq);
 
-    // Registro de stream processor
-    void RebindStreamProcessor(int vrx);
-    void UnbindStreamProcessor();
+    // Registro de stream processor (multi‑VRX)
+    void BindAllStreamProcessors();
+    void UnbindAllStreamProcessors();
 
     // Métricas
     void UpdateReference(const std::vector<float>& iq);
@@ -79,7 +79,6 @@ private:
     std::atomic<bool> m_uiStarted{false};
     std::atomic<bool> m_isStreaming{false};
     std::atomic<bool> m_captureEnabled{false};
-    std::atomic<bool> m_streamProcRegistered{false};
     std::atomic<bool> m_unloadRequested{false};
     std::atomic<bool> m_isUnloading{false};
     std::atomic<bool> m_closingDown{false};
@@ -98,6 +97,9 @@ private:
 
     std::atomic<int> m_pendingVrxIndex{0};
     std::atomic<bool> m_vrxChangeRequested{false};
+
+    // Registro multi‑canal
+    std::vector<bool> m_registered; // por VRX
 
     // Archivos
     std::ofstream m_iqOut;
