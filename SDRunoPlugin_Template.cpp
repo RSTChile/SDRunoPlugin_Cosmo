@@ -17,10 +17,24 @@
 
 using std::string;
 
+static string WideToUtf8(const std::wstring& w) {
+#ifdef _WIN32
+    if (w.empty()) return {};
+    int needed = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
+    if (needed <= 0) return {};
+    std::string out; out.resize((size_t)needed);
+    int written = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), out.data(), needed, nullptr, nullptr);
+    if (written <= 0) return {};
+    return out;
+#else
+    return {};
+#endif
+}
+
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller), m_controller(controller)
 {
-    // Logging muy temprano, no toca controller
+    // Logging temprano, sin tocar el controller
     try {
         logFile.open("cosmo_metrics_log.csv", std::ios::out);
         if (logFile.is_open()) {
@@ -31,17 +45,16 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
 
     m_lastTick = std::chrono::steady_clock::now();
 
-    // Evitar COM/SHGetKnownFolderPath en ctor: usar %PROGRAMDATA% o fallback
+    // Evitar llamadas COM en ctor: usar %PROGRAMDATA% con _dupenv_s o fallback
     try {
         m_baseDir = BuildBaseDataDir();
     } catch (...) {
-        m_baseDir = "CosmoData"; // último recurso
+        m_baseDir = "CosmoData";
     }
 
     m_vrxIndex = 0;
     EnsureUiStarted();
 
-    // No tocar el controller aquí; nada de Bind/VRXCount/IsStreaming
     if (logFile.is_open()) logFile << "ctor,end,\n";
 }
 
@@ -75,6 +88,7 @@ void SDRunoPlugin_Template::ProcessUnloadIfRequested() {
     try { m_controller.RequestUnload(this); } catch (...) {}
 }
 
+// Procesamiento del stream baseband (I/Q). No modifica el audio ni el demod.
 void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* buffer, int length, bool& modified) {
     modified = false;
     if (buffer == nullptr || length <= 0) return;
@@ -94,6 +108,7 @@ void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* b
         ApplyPendingModeIfAny();
         ApplyPendingVrxIfAny();
 
+        // Complex -> [I,Q] float32
         std::vector<float> iq;
         iq.resize((size_t)length * 2);
         for (int i = 0; i < length; ++i) {
@@ -277,7 +292,7 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
 
 void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg) {
     if (logFile.is_open()) {
-        logFile << "metric," << rc << ";" << inr << ";" << lf << ";" << rde << ",\"" << msg << "\"\n";
+        logFile << rc << "," << inr << "," << lf << "," << rde << ",\"" << msg << "\"\n";
         logFile.flush();
     }
 }
@@ -386,9 +401,14 @@ std::string SDRunoPlugin_Template::ModeToString(Mode m) {
 
 std::string SDRunoPlugin_Template::BuildBaseDataDir() {
 #ifdef _WIN32
-    // Usar %PROGRAMDATA% para evitar COM
-    const char* pd = std::getenv("PROGRAMDATA");
-    string base = pd ? pd : "C:\\ProgramData";
+    // Usar _dupenv_s para evitar C4996
+    char* dup = nullptr;
+    size_t len = 0;
+    string base = "C:\\ProgramData";
+    if (_dupenv_s(&dup, &len, "PROGRAMDATA") == 0 && dup != nullptr) {
+        base.assign(dup);
+        free(dup);
+    }
     std::filesystem::path p = std::filesystem::path(base) / "CosmoSDRuno" / "examples";
     std::error_code ec;
     std::filesystem::create_directories(p, ec);
@@ -467,18 +487,4 @@ void SDRunoPlugin_Template::UnbindAllStreamProcessors() {
         } catch (...) {}
         m_registered[ch] = false;
     }
-}
-
-// ====== Métricas y UI ======
-
-void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg) {
-    if (logFile.is_open()) {
-        logFile << "metric," << rc << ";" << inr << ";" << lf << ";" << rde << ",\"" << msg << "\"\n";
-        logFile.flush();
-    }
-}
-
-void SDRunoPlugin_Template::UpdateReference(const std::vector<float>& iq) { refSignal = iq; }
-void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
-    if (m_ui) { m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo); }
 }
