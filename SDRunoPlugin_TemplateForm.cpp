@@ -100,8 +100,8 @@ void SDRunoPlugin_TemplateForm::UpdateBar(std::vector<std::unique_ptr<nana::pane
     if (lit > LEDS) lit = LEDS;
     for (int i = 0; i < LEDS; ++i) {
         bar[i]->bgcolor(i < lit ? on : off);
-        // Forzar repintado del “LED” actualizado
-        bar[i]->refresh();
+        // Forzar repintado de cada “LED”
+        nana::API::refresh_window(bar[i]->handle());
     }
 }
 
