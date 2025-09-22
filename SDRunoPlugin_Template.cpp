@@ -13,56 +13,36 @@
 #ifdef _WIN32
 #define NOMINMAX
 #include <Windows.h>
-#include <ShlObj.h>
-#include <KnownFolders.h>
 #endif
 
 using std::string;
 
-static string WideToUtf8(const std::wstring& w) {
-#ifdef _WIN32
-    if (w.empty()) return {};
-    int needed = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), nullptr, 0, nullptr, nullptr);
-    if (needed <= 0) return {};
-    std::string out; out.resize((size_t)needed);
-    int written = WideCharToMultiByte(CP_UTF8, 0, w.c_str(), (int)w.size(), out.data(), needed, nullptr, nullptr);
-    if (written <= 0) return {};
-    return out;
-#else
-    return {};
-#endif
-}
-
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller), m_controller(controller)
 {
-    logFile.open("cosmo_metrics_log.csv", std::ios::out);
-    if (logFile.is_open())
-        logFile << "RC,INR,LF,RDE,MSG\n";
+    // Logging muy temprano, no toca controller
+    try {
+        logFile.open("cosmo_metrics_log.csv", std::ios::out);
+        if (logFile.is_open()) {
+            logFile << "phase,event,detail\n";
+            logFile << "ctor,begin,\n";
+        }
+    } catch (...) {}
 
     m_lastTick = std::chrono::steady_clock::now();
-    m_baseDir = BuildBaseDataDir();
+
+    // Evitar COM/SHGetKnownFolderPath en ctor: usar %PROGRAMDATA% o fallback
+    try {
+        m_baseDir = BuildBaseDataDir();
+    } catch (...) {
+        m_baseDir = "CosmoData"; // último recurso
+    }
 
     m_vrxIndex = 0;
     EnsureUiStarted();
 
-    // Si el plugin se carga con el streaming ya activo, vincularse de inmediato
-    int n = 1;
-    try { n = m_controller.GetVRXCount(); } catch (...) { n = 1; }
-    m_registered.assign((size_t)n, false);
-
-    bool anyOn = false;
-    for (int ch = 0; ch < n; ++ch) {
-        bool en = false, st = false;
-        try { en = m_controller.GetVRXEnable((channel_t)ch); } catch (...) {}
-        try { st = m_controller.IsStreamingEnabled((channel_t)ch); } catch (...) {}
-        if (en && st) { anyOn = true; break; }
-    }
-    if (anyOn) {
-        BindAllStreamProcessors();
-        m_isStreaming.store(true, std::memory_order_release);
-        if (m_ui) m_ui->SetStreamingState(true);
-    }
+    // No tocar el controller aquí; nada de Bind/VRXCount/IsStreaming
+    if (logFile.is_open()) logFile << "ctor,end,\n";
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
@@ -95,7 +75,6 @@ void SDRunoPlugin_Template::ProcessUnloadIfRequested() {
     try { m_controller.RequestUnload(this); } catch (...) {}
 }
 
-// Procesamiento del stream baseband (I/Q). No toca el demodulador ni el audio.
 void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* buffer, int length, bool& modified) {
     modified = false;
     if (buffer == nullptr || length <= 0) return;
@@ -115,7 +94,6 @@ void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* b
         ApplyPendingModeIfAny();
         ApplyPendingVrxIfAny();
 
-        // Complex -> [I,Q] float32
         std::vector<float> iq;
         iq.resize((size_t)length * 2);
         for (int i = 0; i < length; ++i) {
@@ -150,21 +128,25 @@ void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* b
 
         auto now = std::chrono::steady_clock::now();
         if (now - m_lastTick > std::chrono::seconds(1)) {
-            if (logFile.is_open()) { logFile << "tick,," << lf << "," << rde << ",\"processing\"\n"; logFile.flush(); }
+            if (logFile.is_open()) { logFile << "runtime,tick,processing\n"; logFile.flush(); }
             m_lastTick = now;
         }
     }
     catch (const std::exception& ex) {
-        if (logFile.is_open()) { logFile << "0,0,0,0,\"EXCEPTION: " << ex.what() << "\"\n"; logFile.flush(); }
+        if (logFile.is_open()) { logFile << "error,StreamProcessorProcess," << ex.what() << "\n"; logFile.flush(); }
     }
     catch (...) {
-        if (logFile.is_open()) { logFile << "0,0,0,0,\"EXCEPTION: unknown\"\n"; logFile.flush(); }
+        if (logFile.is_open()) { logFile << "error,StreamProcessorProcess,unknown\n"; logFile.flush(); }
     }
 }
 
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
     try {
         EnsureUiStarted();
+        if (logFile.is_open()) logFile << "event," << ev.GetType() << ",\n";
+
+        // Intento único si el plugin se cargó con streaming ya activo
+        TryAutoBindIfStreamingOnce();
 
         switch (ev.GetType()) {
         case UnoEvent::StreamingStarted:
@@ -196,9 +178,40 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
 
         if (m_ui) { m_ui->HandleEvent(ev); }
     } catch (const std::exception& ex) {
-        if (logFile.is_open()) { logFile << "0,0,0,0,\"HandleEvent EXCEPTION: " << ex.what() << "\"\n"; logFile.flush(); }
+        if (logFile.is_open()) { logFile << "error,HandleEvent," << ex.what() << "\n"; logFile.flush(); }
     } catch (...) {
-        if (logFile.is_open()) { logFile << "0,0,0,0,\"HandleEvent EXCEPTION: unknown\"\n"; logFile.flush(); }
+        if (logFile.is_open()) { logFile << "error,HandleEvent,unknown\n"; logFile.flush(); }
+    }
+}
+
+// ====== Intento seguro de auto-bind si ya estaba en streaming ======
+
+void SDRunoPlugin_Template::TryAutoBindIfStreamingOnce() {
+    if (m_triedAutoBind) return;
+    m_triedAutoBind = true;
+
+    try {
+        int n = 1;
+        try { n = m_controller.GetVRXCount(); } catch (...) { n = 1; }
+        if ((int)m_registered.size() != n) m_registered.assign((size_t)n, false);
+
+        bool anyOn = false;
+        for (int ch = 0; ch < n; ++ch) {
+            bool en = false, st = false;
+            try { en = m_controller.GetVRXEnable((channel_t)ch); } catch (...) {}
+            try { st = m_controller.IsStreamingEnabled((channel_t)ch); } catch (...) {}
+            if (en && st) { anyOn = true; break; }
+        }
+        if (anyOn) {
+            BindAllStreamProcessors();
+            m_isStreaming.store(true, std::memory_order_release);
+            if (m_ui) m_ui->SetStreamingState(true);
+            if (logFile.is_open()) logFile << "info,autoBind,done\n";
+        } else {
+            if (logFile.is_open()) logFile << "info,autoBind,skipped\n";
+        }
+    } catch (...) {
+        if (logFile.is_open()) logFile << "error,autoBind,exception\n";
     }
 }
 
@@ -264,7 +277,7 @@ std::string SDRunoPlugin_Template::DetectPalimpsesto(const std::vector<float>& i
 
 void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg) {
     if (logFile.is_open()) {
-        logFile << rc << "," << inr << "," << lf << "," << rde << ",\"" << msg << "\"\n";
+        logFile << "metric," << rc << ";" << inr << ";" << lf << ";" << rde << ",\"" << msg << "\"\n";
         logFile.flush();
     }
 }
@@ -373,14 +386,9 @@ std::string SDRunoPlugin_Template::ModeToString(Mode m) {
 
 std::string SDRunoPlugin_Template::BuildBaseDataDir() {
 #ifdef _WIN32
-    PWSTR pathW = nullptr;
-    string base;
-    if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_ProgramData, 0, nullptr, &pathW))) {
-        base = WideToUtf8(pathW);
-        CoTaskMemFree(pathW);
-    } else {
-        base = "C:\\ProgramData";
-    }
+    // Usar %PROGRAMDATA% para evitar COM
+    const char* pd = std::getenv("PROGRAMDATA");
+    string base = pd ? pd : "C:\\ProgramData";
     std::filesystem::path p = std::filesystem::path(base) / "CosmoSDRuno" / "examples";
     std::error_code ec;
     std::filesystem::create_directories(p, ec);
@@ -407,7 +415,7 @@ void SDRunoPlugin_Template::RotateIqFile(Mode mode) {
         m_currentFilePath = fname.string();
         if (m_ui) { try { m_ui->UpdateSavePath(m_currentFilePath); } catch (...) {} }
     } catch (...) {
-        if (logFile.is_open()) logFile << "0,0,0,0,\"RotateIqFile failed\"\n";
+        if (logFile.is_open()) logFile << "error,RotateIqFile,open_failed\n";
     }
 }
 
@@ -459,4 +467,18 @@ void SDRunoPlugin_Template::UnbindAllStreamProcessors() {
         } catch (...) {}
         m_registered[ch] = false;
     }
+}
+
+// ====== Métricas y UI ======
+
+void SDRunoPlugin_Template::LogMetrics(float rc, float inr, float lf, float rde, const std::string& msg) {
+    if (logFile.is_open()) {
+        logFile << "metric," << rc << ";" << inr << ";" << lf << ";" << rde << ",\"" << msg << "\"\n";
+        logFile.flush();
+    }
+}
+
+void SDRunoPlugin_Template::UpdateReference(const std::vector<float>& iq) { refSignal = iq; }
+void SDRunoPlugin_Template::UpdateUI(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo) {
+    if (m_ui) { m_ui->UpdateMetrics(rc, inr, lf, rde, msg, modoRestrictivo); }
 }
