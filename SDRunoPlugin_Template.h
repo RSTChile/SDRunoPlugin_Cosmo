@@ -26,7 +26,7 @@ public:
     // IUnoPlugin
     virtual void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoStreamProcessor: buffers I/Q en baseband
+    // IUnoStreamProcessor
     virtual void StreamProcessorProcess(channel_t channel, Complex* buffer, int length, bool& modified) override;
 
     // UI hooks
@@ -61,6 +61,9 @@ private:
     // Registro de stream processor (multi‑VRX)
     void BindAllStreamProcessors();
     void UnbindAllStreamProcessors();
+
+    // Intento seguro: si ya estaba el streaming activo al cargar el plugin
+    void TryAutoBindIfStreamingOnce();
 
     // Métricas
     void UpdateReference(const std::vector<float>& iq);
@@ -113,4 +116,7 @@ private:
 
     // Logging
     std::ofstream logFile;
+
+    // Intento único de auto‑bind post‑carga
+    bool m_triedAutoBind{false};
 };
