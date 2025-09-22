@@ -26,7 +26,7 @@ public:
     // IUnoPlugin
     virtual void HandleEvent(const UnoEvent& ev) override;
 
-    // IUnoStreamProcessor
+    // IUnoStreamProcessor: buffers I/Q en baseband
     virtual void StreamProcessorProcess(channel_t channel, Complex* buffer, int length, bool& modified) override;
 
     // UI hooks
