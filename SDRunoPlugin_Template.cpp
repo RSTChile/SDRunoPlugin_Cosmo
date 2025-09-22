@@ -48,7 +48,7 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
-    try { UnbindStreamProcessor(); } catch (...) {}
+    try { UnbindAllStreamProcessors(); } catch (...) {}
     try { CloseIqFile(); } catch (...) {}
     m_ui.reset();
     if (logFile.is_open()) logFile.close();
@@ -72,7 +72,7 @@ void SDRunoPlugin_Template::ProcessUnloadIfRequested() {
     bool doUnload = m_unloadRequested.exchange(false, std::memory_order_acq_rel);
     if (!doUnload) return;
 
-    UnbindStreamProcessor();
+    UnbindAllStreamProcessors();
     CloseIqFile();
     try { m_controller.RequestUnload(this); } catch (...) {}
 }
@@ -80,10 +80,6 @@ void SDRunoPlugin_Template::ProcessUnloadIfRequested() {
 // Stream baseband (no altera el audio ni el demod)
 void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* buffer, int length, bool& modified) {
     modified = false;
-    if (!m_captureEnabled.load(std::memory_order_acquire)) {
-        // Aunque no capturemos a disco, igual podemos actualizar métricas/LEDs
-        // pero si no hay UI o stream, salimos pronto
-    }
 
     if (buffer == nullptr || length <= 0) return;
 
@@ -155,9 +151,7 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
 
         switch (ev.GetType()) {
         case UnoEvent::StreamingStarted:
-            if (m_captureEnabled.load(std::memory_order_acquire)) {
-                RebindStreamProcessor(m_vrxIndex);
-            }
+            BindAllStreamProcessors();
             m_isStreaming.store(true, std::memory_order_release);
             if (m_ui) m_ui->SetStreamingState(true);
             break;
@@ -165,14 +159,14 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev) {
         case UnoEvent::StreamingStopped:
             m_isStreaming.store(false, std::memory_order_release);
             if (m_ui) m_ui->SetStreamingState(false);
-            UnbindStreamProcessor();
+            UnbindAllStreamProcessors();
             CloseIqFile();
             if (m_ui) { m_ui->UpdateSavePath(""); }
             break;
 
         case UnoEvent::ClosingDown:
             m_closingDown.store(true, std::memory_order_release);
-            UnbindStreamProcessor();
+            UnbindAllStreamProcessors();
             CloseIqFile();
             break;
 
@@ -279,15 +273,12 @@ void SDRunoPlugin_Template::SetCaptureEnabled(bool enabled) {
     if (enabled == was) return;
 
     if (!enabled) {
-        UnbindStreamProcessor();
         CloseIqFile();
         if (m_ui) m_ui->UpdateSavePath("");
         return;
     }
 
-    RebindStreamProcessor(m_vrxIndex);
-
-    // Forzar rotación acorde al modo activo
+    // Forzar rotación acorde al modo activo la próxima vez que escribamos
     m_modeChangeRequested.store(true, std::memory_order_release);
     m_pendingMode.store(modoRestrictivo ? 0 : 1, std::memory_order_release);
 }
@@ -339,13 +330,7 @@ void SDRunoPlugin_Template::ApplyPendingVrxIfAny() {
     int next = m_pendingVrxIndex.load(std::memory_order_acquire);
     if (next == m_vrxIndex) return;
 
-    if (m_captureEnabled.load(std::memory_order_acquire)) {
-        UnbindStreamProcessor();
-        m_vrxIndex = next;
-        RebindStreamProcessor(m_vrxIndex);
-    } else {
-        m_vrxIndex = next;
-    }
+    m_vrxIndex = next;
 }
 
 // ====== Archivos ======
@@ -424,23 +409,31 @@ void SDRunoPlugin_Template::AppendIq(const std::vector<float>& iq) {
     catch (...) { try { CloseIqFile(); } catch (...) {} }
 }
 
-// ====== Registro de stream ======
+// ====== Registro de stream: todos los VRX ======
 
-void SDRunoPlugin_Template::RebindStreamProcessor(int vrx) {
-    if (m_streamProcRegistered.load(std::memory_order_acquire)) {
-        try { m_controller.UnregisterStreamProcessor(vrx, this); } catch (...) {}
-        m_streamProcRegistered.store(false, std::memory_order_release);
-    }
-    try {
-        m_controller.RegisterStreamProcessor(vrx, this);
-        m_streamProcRegistered.store(true, std::memory_order_release);
-    } catch (...) {
-        m_streamProcRegistered.store(false, std::memory_order_release);
+void SDRunoPlugin_Template::BindAllStreamProcessors() {
+    int n = 1;
+    try { n = m_controller.GetVRXCount(); } catch (...) { n = 1; }
+    if ((int)m_registered.size() != n) m_registered.assign((size_t)n, false);
+
+    for (int ch = 0; ch < n; ++ch) {
+        if (m_registered[ch]) continue;
+        try {
+            m_controller.RegisterStreamProcessor((channel_t)ch, this);
+            m_registered[ch] = true;
+        } catch (...) {
+            m_registered[ch] = false;
+        }
     }
 }
 
-void SDRunoPlugin_Template::UnbindStreamProcessor() {
-    if (!m_streamProcRegistered.load(std::memory_order_acquire)) return;
-    try { m_controller.UnregisterStreamProcessor(m_vrxIndex, this); } catch (...) {}
-    m_streamProcRegistered.store(false, std::memory_order_release);
+void SDRunoPlugin_Template::UnbindAllStreamProcessors() {
+    if (m_registered.empty()) return;
+    for (int ch = 0; ch < (int)m_registered.size(); ++ch) {
+        if (!m_registered[ch]) continue;
+        try {
+            m_controller.UnregisterStreamProcessor((channel_t)ch, this);
+        } catch (...) {}
+        m_registered[ch] = false;
+    }
 }
