@@ -45,6 +45,24 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
 
     m_vrxIndex = 0;
     EnsureUiStarted();
+
+    // Si el plugin se carga con el streaming ya activo, vincularse de inmediato
+    int n = 1;
+    try { n = m_controller.GetVRXCount(); } catch (...) { n = 1; }
+    m_registered.assign((size_t)n, false);
+
+    bool anyOn = false;
+    for (int ch = 0; ch < n; ++ch) {
+        bool en = false, st = false;
+        try { en = m_controller.GetVRXEnable((channel_t)ch); } catch (...) {}
+        try { st = m_controller.IsStreamingEnabled((channel_t)ch); } catch (...) {}
+        if (en && st) { anyOn = true; break; }
+    }
+    if (anyOn) {
+        BindAllStreamProcessors();
+        m_isStreaming.store(true, std::memory_order_release);
+        if (m_ui) m_ui->SetStreamingState(true);
+    }
 }
 
 SDRunoPlugin_Template::~SDRunoPlugin_Template() {
@@ -77,10 +95,9 @@ void SDRunoPlugin_Template::ProcessUnloadIfRequested() {
     try { m_controller.RequestUnload(this); } catch (...) {}
 }
 
-// Stream baseband (no altera el audio ni el demod)
+// Procesamiento del stream baseband (I/Q). No toca el demodulador ni el audio.
 void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* buffer, int length, bool& modified) {
     modified = false;
-
     if (buffer == nullptr || length <= 0) return;
 
     try {
@@ -98,12 +115,12 @@ void SDRunoPlugin_Template::StreamProcessorProcess(channel_t channel, Complex* b
         ApplyPendingModeIfAny();
         ApplyPendingVrxIfAny();
 
-        // Convertir Complex -> intercalado [I, Q] float32
+        // Complex -> [I,Q] float32
         std::vector<float> iq;
         iq.resize((size_t)length * 2);
         for (int i = 0; i < length; ++i) {
-            iq[2 * i + 0] = buffer[i].real; // I
-            iq[2 * i + 1] = buffer[i].imag; // Q
+            iq[2 * i + 0] = buffer[i].real;
+            iq[2 * i + 1] = buffer[i].imag;
         }
 
         if (!haveRef) { UpdateReference(iq); haveRef = true; }
@@ -409,7 +426,7 @@ void SDRunoPlugin_Template::AppendIq(const std::vector<float>& iq) {
     catch (...) { try { CloseIqFile(); } catch (...) {} }
 }
 
-// ====== Registro de stream: todos los VRX ======
+// ====== Registro de stream: todos los VRX habilitados ======
 
 void SDRunoPlugin_Template::BindAllStreamProcessors() {
     int n = 1;
@@ -417,6 +434,12 @@ void SDRunoPlugin_Template::BindAllStreamProcessors() {
     if ((int)m_registered.size() != n) m_registered.assign((size_t)n, false);
 
     for (int ch = 0; ch < n; ++ch) {
+        bool enabled = true;
+        bool streaming = true;
+        try { enabled = m_controller.GetVRXEnable((channel_t)ch); } catch (...) {}
+        try { streaming = m_controller.IsStreamingEnabled((channel_t)ch); } catch (...) {}
+        if (!enabled || !streaming) { m_registered[ch] = false; continue; }
+
         if (m_registered[ch]) continue;
         try {
             m_controller.RegisterStreamProcessor((channel_t)ch, this);
