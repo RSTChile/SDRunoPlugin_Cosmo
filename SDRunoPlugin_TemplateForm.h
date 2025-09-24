@@ -70,4 +70,4 @@ private:
     // Gestión de diálogo de configuración
     void SettingsButton_Click();
     void SettingsDialog_Closed();
-};
+}
