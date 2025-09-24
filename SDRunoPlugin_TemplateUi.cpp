@@ -1,4 +1,6 @@
 #include <sstream>
+#include <thread>
+#include <mutex>
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
 #include <nana/gui/widgets/listbox.hpp>
@@ -86,4 +88,41 @@ void SDRunoPlugin_TemplateUi::UpdateLed(bool signalPresent)
 {
     std::lock_guard<std::mutex> guard(m_lock);
     if (m_form) m_form->SetLedState(signalPresent);
+}
+
+std::string SDRunoPlugin_TemplateUi::GetBaseDir()
+{
+    std::string baseDir;
+    m_controller.GetConfigurationKey("Template.BaseDir", baseDir);
+    if (baseDir.empty()) {
+        baseDir = "C:\\"; // Directorio por defecto
+    }
+    return baseDir;
+}
+
+void SDRunoPlugin_TemplateUi::RequestChangeVrx(int vrxIndex)
+{
+    // Stub funcional - cambiar al VRX especificado
+    try {
+        m_controller.SetVRXEnable(vrxIndex, true);
+        // Aquí podrías agregar lógica adicional para cambiar al VRX
+    } catch (...) {
+        // Manejar errores silenciosamente
+    }
+}
+
+void SDRunoPlugin_TemplateUi::RequestChangeBaseDir(const std::string& path)
+{
+    // Stub funcional - guardar el directorio base
+    try {
+        m_controller.SetConfigurationKey("Template.BaseDir", path);
+    } catch (...) {
+        // Manejar errores silenciosamente
+    }
+}
+
+void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
+{
+    // Stub funcional - manejar el cierre del diálogo de configuración
+    // No necesita hacer nada específico por ahora
 }

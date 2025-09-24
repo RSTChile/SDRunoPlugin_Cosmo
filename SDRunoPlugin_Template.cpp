@@ -28,8 +28,12 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
 {
     // Calcula RMS de la señal
     float sum = 0.0f;
-    for (int i = 0; i < length; ++i)
-        sum += std::norm(data[i]);
+    for (int i = 0; i < length; ++i) {
+        // Reemplazar std::norm con cálculo manual (x*x + y*y)
+        float real = data[i].real;
+        float imag = data[i].imag;
+        sum += real * real + imag * imag;
+    }
     float rms = sqrt(sum / length);
     m_signalPresent = (rms > 0.01f);
 

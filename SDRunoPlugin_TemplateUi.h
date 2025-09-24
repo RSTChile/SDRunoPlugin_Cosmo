@@ -8,6 +8,8 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <thread>
+#include <mutex>
 
 #include <iunoplugincontroller.h>
 #include "SDRunoPlugin_TemplateForm.h"
@@ -29,6 +31,12 @@ public:
     int LoadY();
 
     void UpdateLed(bool signalPresent);
+
+    // Métodos faltantes agregados
+    std::string GetBaseDir();
+    void RequestChangeVrx(int vrxIndex);
+    void RequestChangeBaseDir(const std::string& path);
+    void SettingsDialogClosed();
 
 private:
     SDRunoPlugin_Template & m_parent;

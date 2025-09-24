@@ -53,9 +53,8 @@ void SDRunoPlugin_TemplateForm::SetLedState(bool on)
 
 void SDRunoPlugin_TemplateForm::SettingsButton_Click()
 {
-    // Aquí debes crear el diálogo de configuración correctamente
-    // Si tu clase SDRunoPlugin_TemplateSettingsDialog no tiene constructor con estos parámetros, ajústalo
-    SDRunoPlugin_TemplateSettingsDialog* settingsDialog = new SDRunoPlugin_TemplateSettingsDialog(*this, m_controller);
+    // Crear el diálogo de configuración con los parámetros correctos
+    SDRunoPlugin_TemplateSettingsDialog* settingsDialog = new SDRunoPlugin_TemplateSettingsDialog(m_parent, *this, m_controller);
     this->enabled(false);
     // Aquí deberías conectar el evento de cierre si tu framework lo permite
     // settingsDialog->events().unload([&] { SettingsDialog_Closed(); });
