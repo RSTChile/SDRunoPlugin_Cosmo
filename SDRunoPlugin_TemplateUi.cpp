@@ -13,8 +13,10 @@
 SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent,
                                                  IUnoPluginController& controller)
     : m_parent(parent),
+      m_thread(),
       m_form(nullptr),
-      m_controller(controller)
+      m_controller(controller),
+      m_started(false)
 {
     // Inicializar carpeta base leyendo la configuración o tomando "." como predeterminado
     std::string tmp;
@@ -87,8 +89,6 @@ void SDRunoPlugin_TemplateUi::UpdateLed(bool signalPresent)
     if (m_form) m_form->SetLedState(signalPresent);
 }
 
-// Métodos añadidos para el diálogo de configuración
-
 std::string SDRunoPlugin_TemplateUi::GetBaseDir() const
 {
     return m_baseDir;
@@ -96,7 +96,6 @@ std::string SDRunoPlugin_TemplateUi::GetBaseDir() const
 
 void SDRunoPlugin_TemplateUi::RequestChangeBaseDir(const std::string& path)
 {
-    // Actualizar carpeta base y guardar en configuración
     m_baseDir = path;
     try {
         m_controller.SetConfigurationKey("Template.BaseDir", path);
@@ -113,7 +112,6 @@ void SDRunoPlugin_TemplateUi::RequestChangeVrx(int /*vrxIndex*/)
 
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
 {
-    // Rehabilitar formulario principal (si fuera necesario)
     if (m_form) {
         m_form->enabled(true);
         m_form->focus();
