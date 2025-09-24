@@ -53,7 +53,7 @@ void SDRunoPlugin_TemplateForm::Setup()
     if (!img_close_normal.empty()) close_button.load(img_close_normal);
     if (!img_sett_normal.empty()) sett_button.load(img_sett_normal);
 
-    // Posicionamiento de los elementos superiores
+    // Posicionar elementos superiores
     header_bar.move(rectangle(sideBorderWidth, 0,
                               formWidth - 2 * sideBorderWidth,
                               topBarHeight));
@@ -61,7 +61,7 @@ void SDRunoPlugin_TemplateForm::Setup()
     min_button.move(rectangle(formWidth - sideBorderWidth - 40, 0, 20, topBarHeight));
     sett_button.move(rectangle(formWidth - sideBorderWidth - 80, 0, 40, topBarHeight));
 
-    // Configurar título y etiqueta de versión
+    // Configurar título y versión
     title_bar_label.caption("Cosmo");
     title_bar_label.move(rectangle(sideBorderWidth + 5, 0, 150, topBarHeight));
     title_bar_label.fgcolor(colors::white);
@@ -73,7 +73,7 @@ void SDRunoPlugin_TemplateForm::Setup()
     ledOnImg.open("resources\\led_on.bmp");
     ledOffImg.open("resources\\led_off.bmp");
     ledPicture.load(ledOffImg, rectangle(0, 0, 20, 20));
-    ledPicture.transparent(true);
+    // Nota: no usamos ledPicture.transparent(true) porque no está soportado en esta versión de Nana
 
     // Permitir arrastrar la ventana
     form_dragger.target(*this);
