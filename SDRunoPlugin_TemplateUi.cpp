@@ -11,11 +11,18 @@
 #include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateForm.h"
 
-SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller) :
-    m_parent(parent),
-    m_form(nullptr),
-    m_controller(controller)
+SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent,
+                                                 IUnoPluginController& controller)
+    : m_parent(parent),
+      m_form(nullptr),
+      m_controller(controller)
 {
+    // Inicializar carpeta base leyendo la configuración o tomando "." como predeterminado
+    std::string tmp;
+    m_controller.GetConfigurationKey("Template.BaseDir", tmp);
+    m_baseDir = tmp.empty() ? std::string(".") : tmp;
+
+    // Lanzar el hilo de UI
     m_thread = std::thread(&SDRunoPlugin_TemplateUi::ShowUi, this);
 }
 
@@ -38,9 +45,7 @@ int SDRunoPlugin_TemplateUi::LoadX()
     std::string tmp;
     m_controller.GetConfigurationKey("Template.X", tmp);
     if (tmp.empty())
-    {
         return -1;
-    }
     return stoi(tmp);
 }
 
@@ -49,9 +54,7 @@ int SDRunoPlugin_TemplateUi::LoadY()
     std::string tmp;
     m_controller.GetConfigurationKey("Template.Y", tmp);
     if (tmp.empty())
-    {
         return -1;
-    }
     return stoi(tmp);
 }
 
@@ -61,17 +64,13 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
     {
     case UnoEvent::StreamingStarted:
         break;
-
     case UnoEvent::StreamingStopped:
         break;
-
     case UnoEvent::SavingWorkspace:
         break;
-
     case UnoEvent::ClosingDown:
         FormClosed();
         break;
-
     default:
         break;
     }
@@ -79,6 +78,7 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
+    // Solicitar descarga del plugin. m_parent es de tipo SDRunoPlugin_Template (implementa IUnoPlugin)
     m_controller.RequestUnload(&m_parent);
 }
 
@@ -86,4 +86,38 @@ void SDRunoPlugin_TemplateUi::UpdateLed(bool signalPresent)
 {
     std::lock_guard<std::mutex> guard(m_lock);
     if (m_form) m_form->SetLedState(signalPresent);
+}
+
+// *** Nuevas funciones para diálogo de configuración ***
+
+std::string SDRunoPlugin_TemplateUi::GetBaseDir() const
+{
+    return m_baseDir;
+}
+
+void SDRunoPlugin_TemplateUi::RequestChangeBaseDir(const std::string& path)
+{
+    // Actualizar carpeta base y guardar en configuración
+    m_baseDir = path;
+    try {
+        m_controller.SetConfigurationKey("Template.BaseDir", path);
+    } catch (...) {
+        // Ignorar fallos al guardar la configuración
+    }
+}
+
+void SDRunoPlugin_TemplateUi::RequestChangeVrx(int vrxIndex)
+{
+    // Cambiar el VRX actual. Aquí solo actualizamos la variable del plugin.
+    // En una implementación real se podrían reiniciar observadores o ajustar canales.
+    m_parent.m_channel = vrxIndex;
+}
+
+void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
+{
+    // Rehabilitar formulario principal (si fuera necesario)
+    if (m_form) {
+        m_form->enabled(true);
+        m_form->focus();
+    }
 }
