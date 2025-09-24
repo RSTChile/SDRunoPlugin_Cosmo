@@ -6,7 +6,6 @@
 #include <nana/gui/widgets/label.hpp>
 #include <nana/gui/timer.hpp>
 #include <unoevent.h>
-
 #include "SDRunoPlugin_Template.h"
 #include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateForm.h"
@@ -88,7 +87,7 @@ void SDRunoPlugin_TemplateUi::UpdateLed(bool signalPresent)
     if (m_form) m_form->SetLedState(signalPresent);
 }
 
-// *** Nuevas funciones para diálogo de configuración ***
+// Métodos añadidos para el diálogo de configuración
 
 std::string SDRunoPlugin_TemplateUi::GetBaseDir() const
 {
@@ -101,16 +100,15 @@ void SDRunoPlugin_TemplateUi::RequestChangeBaseDir(const std::string& path)
     m_baseDir = path;
     try {
         m_controller.SetConfigurationKey("Template.BaseDir", path);
-    } catch (...) {
+    }
+    catch (...) {
         // Ignorar fallos al guardar la configuración
     }
 }
 
-void SDRunoPlugin_TemplateUi::RequestChangeVrx(int vrxIndex)
+void SDRunoPlugin_TemplateUi::RequestChangeVrx(int /*vrxIndex*/)
 {
-    // Cambiar el VRX actual. Aquí solo actualizamos la variable del plugin.
-    // En una implementación real se podrían reiniciar observadores o ajustar canales.
-    m_parent.m_channel = vrxIndex;
+    // No se implementa el cambio de VRX en tiempo de ejecución; función vacía para evitar errores de compilación.
 }
 
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
