@@ -28,10 +28,8 @@ SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 
 void SDRunoPlugin_TemplateUi::ShowUi()
 {
-    m_lock.lock();
+    std::lock_guard<std::mutex> guard(m_lock);
     m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
-    m_lock.unlock();
-
     m_form->Run();
 }
 
