@@ -1,75 +1,66 @@
 #pragma once
 
 #include <nana/gui.hpp>
-#include <nana/gui/widgets/label.hpp>
 #include <nana/gui/widgets/button.hpp>
+#include <nana/gui/widgets/listbox.hpp>
+#include <nana/gui/widgets/slider.hpp>
+#include <nana/gui/widgets/label.hpp>
 #include <nana/gui/widgets/combox.hpp>
-#include <nana/gui/widgets/panel.hpp>
-#include <memory>
-#include <string>
-#include <vector>
+#include <nana/gui/timer.hpp>
+#include <nana/gui/widgets/picture.hpp>
+#include <nana/gui/filebox.hpp>
+#include <nana/gui/dragger.hpp>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
 
-class SDRunoPlugin_Template;
+#include <iunoplugincontroller.h>
+
+#define topBarHeight (27)
+#define bottomBarHeight (8)
+#define sideBorderWidth (8)
+#define formWidth (297)
+#define formHeight (240)
+
 class SDRunoPlugin_TemplateUi;
-class SDRunoPlugin_TemplateSettingsDialog;
-class IUnoPluginController;
 
-#define formWidth  (520)
-#define formHeight (300)
-
-class SDRunoPlugin_TemplateForm : public nana::form {
+class SDRunoPlugin_TemplateForm : public nana::form
+{
 public:
-    SDRunoPlugin_TemplateForm(SDRunoPlugin_Template& parent, IUnoPluginController& controller, SDRunoPlugin_TemplateUi& ui);
+    SDRunoPlugin_TemplateForm(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);        
     ~SDRunoPlugin_TemplateForm();
-
+    
     void Run();
-    void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
-    void SettingsButton_Click(); // legado
-    void SetSavePath(const std::string& path);
-    void SetStreaming(bool streaming);
+    void SetLedState(bool on);
 
 private:
     void Setup();
-    void CreateLedBars();
-    void UpdateBar(std::vector<std::unique_ptr<nana::panel<true>>>& bar, float value, const nana::color& on, const nana::color& off);
 
-    SDRunoPlugin_Template& m_parent;
-    IUnoPluginController& m_controller;
-    SDRunoPlugin_TemplateUi& m_ui;
+    nana::picture bg_border{ *this, nana::rectangle(0, 0, formWidth, formHeight) };
+    nana::picture bg_inner{ bg_border, nana::rectangle(sideBorderWidth, topBarHeight, formWidth - (2 * sideBorderWidth), formHeight - topBarHeight - bottomBarHeight) };
+    nana::picture header_bar{ *this, true };
+    nana::label title_bar_label{ *this, true };
+    nana::dragger form_dragger;
+    nana::label form_drag_label{ *this, nana::rectangle(0, 0, formWidth, formHeight) };
+    nana::paint::image img_min_normal;
+    nana::paint::image img_min_down;
+    nana::paint::image img_close_normal;
+    nana::paint::image img_close_down;
+    nana::paint::image img_header;
+    nana::picture close_button{ *this, nana::rectangle(0, 0, 20, 15) };
+    nana::picture min_button{ *this, nana::rectangle(0, 0, 20, 15) };
+    nana::label versionLbl{ *this, nana::rectangle(formWidth - 40, formHeight - 30, 30, 20) };
 
-    // Controles
-    nana::label title_bar_label{ *this };
-    nana::label versionLbl{ *this, nana::rectangle(formWidth - 40, formHeight - 20, 40, 16) };
+    nana::paint::image img_sett_normal;
+    nana::paint::image img_sett_down;
+    nana::picture sett_button{ *this, nana::rectangle(0, 0, 40, 15) };
+    void SettingsButton_Click();
+    void SettingsDialog_Closed();
 
-    nana::label rcLabel{ *this, nana::rectangle(20, 70, 60, 20) };
-    nana::label inrLabel{ *this, nana::rectangle(20, 100, 60, 20) };
-    nana::label lfLabel{ *this, nana::rectangle(20, 130, 60, 20) };
-    nana::label rdeLabel{ *this, nana::rectangle(20, 160, 60, 20) };
-    nana::label msgLabel{ *this, nana::rectangle(20, 190, 480, 24) };
+    // LED
+    nana::picture ledPicture{ *this, nana::rectangle(20, 40, 20, 20) };
+    nana::paint::image ledOnImg, ledOffImg;
 
-    nana::label estadoCaption{ *this, nana::rectangle(20, 225, 60, 18) };
-    nana::label estadoValor{ *this, nana::rectangle(85, 225, 420, 18) };
-
-    nana::combox modeCombo{ *this, nana::rectangle(20, 20, 220, 26) };
-    nana::button settingsBtn{ *this, nana::rectangle(250, 20, 90, 26) };
-    nana::button captureBtn{ *this, nana::rectangle(350, 20, 120, 26) };
-
-    // LED bars
-    static constexpr int LEDS = 20;
-    static constexpr int ledSize = 10;
-    static constexpr int ledGap = 2;
-    int barStartX = 90;
-    int barWidth = LEDS * (ledSize + ledGap);
-
-    std::vector<std::unique_ptr<nana::panel<true>>> rcBar;
-    std::vector<std::unique_ptr<nana::panel<true>>> inrBar;
-    std::vector<std::unique_ptr<nana::panel<true>>> lfBar;
-    std::vector<std::unique_ptr<nana::panel<true>>> rdeBar;
-
-    std::shared_ptr<SDRunoPlugin_TemplateSettingsDialog> m_settingsDialog;
-
-    // Estado
-    bool m_streaming{false};
-    bool m_capturing{false};
-    std::string m_currentPath;
+    SDRunoPlugin_TemplateUi & m_parent;
+    IUnoPluginController & m_controller;
 };
