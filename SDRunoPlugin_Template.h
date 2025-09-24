@@ -21,7 +21,7 @@ public:
     virtual const char* GetPluginName() const override { return "SDRuno Plugin Example"; }
     virtual void HandleEvent(const UnoEvent& ev) override;
 
-    // Nuevo: Implementación de IUnoStreamObserver
+    // Implementación de IUnoStreamObserver
     virtual void StreamUpdate(float* samples, int length) override;
 
 private:
