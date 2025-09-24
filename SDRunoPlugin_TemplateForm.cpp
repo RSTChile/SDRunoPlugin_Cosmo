@@ -73,7 +73,7 @@ void SDRunoPlugin_TemplateForm::Setup()
     ledOnImg.open("resources\\led_on.bmp");
     ledOffImg.open("resources\\led_off.bmp");
     ledPicture.load(ledOffImg, rectangle(0, 0, 20, 20));
-    // Nota: no usamos ledPicture.transparent(true) porque no está soportado en esta versión de Nana
+    // No se llama a ledPicture.transparent(true) para evitar el error de compilación
 
     // Permitir arrastrar la ventana
     form_dragger.target(*this);
@@ -87,7 +87,6 @@ void SDRunoPlugin_TemplateForm::Setup()
         if (!img_close_normal.empty()) close_button.load(img_close_normal);
     });
     close_button.events().click([&] {
-        // Notificar al UI que la ventana ha sido cerrada
         m_parent.FormClosed();
     });
 
@@ -99,7 +98,6 @@ void SDRunoPlugin_TemplateForm::Setup()
         if (!img_min_normal.empty()) min_button.load(img_min_normal);
     });
     min_button.events().click([&] {
-        // Minimizar la ventana utilizando la API de Nana
         nana::API::zoom_window(this->handle(), false);
     });
 
@@ -126,17 +124,13 @@ void SDRunoPlugin_TemplateForm::SetLedState(bool on)
 
 void SDRunoPlugin_TemplateForm::SettingsButton_Click()
 {
-    // Crear y mostrar el diálogo de configuración
     auto settingsDialog = new SDRunoPlugin_TemplateSettingsDialog(m_parent, *this, m_controller);
     this->enabled(false);
     settingsDialog->show();
-    // Cuando se cierre el diálogo, se debe volver a habilitar la ventana
-    // Puedes conectar events().destroy en settingsDialog para llamar a SettingsDialog_Closed
 }
 
 void SDRunoPlugin_TemplateForm::SettingsDialog_Closed()
 {
-    // Rehabilitar la ventana al cerrar el diálogo
     this->enabled(true);
     this->focus();
 }
