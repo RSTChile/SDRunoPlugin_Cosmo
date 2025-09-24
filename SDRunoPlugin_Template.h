@@ -9,7 +9,6 @@
 #include <iunoaudioobserver.h>
 #include <iunoaudioprocessor.h>
 #include <iunoannotator.h>
-
 #include "SDRunoPlugin_TemplateUi.h"
 
 class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver
@@ -21,13 +20,14 @@ public:
     virtual const char* GetPluginName() const override { return "SDRuno Plugin Example"; }
     virtual void HandleEvent(const UnoEvent& ev) override;
 
-    // Implementación de IUnoStreamObserver
-    virtual void StreamUpdate(float* samples, int length) override;
+    // Implementación correcta de IUnoStreamObserver
+    virtual void StreamObserverProcess(channel_t channel, const Complex* data, int length) override;
 
 private:
     void WorkerFunction();
     std::thread* m_worker;
     std::mutex m_lock;
     SDRunoPlugin_TemplateUi m_form;
-    std::atomic<bool> m_signalPresent{false}; // Estado de señal
+    std::atomic<bool> m_signalPresent{false};
+    channel_t m_channel{0}; // Canal observado
 };
