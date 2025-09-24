@@ -39,6 +39,8 @@ public:
     void FormClosed();
     void SettingsDialogClosed();
 
+    // ...
+    void UpdateLed(bool signalPresent);
 private:
     SDRunoPlugin_Template& m_parent;
     std::shared_ptr<SDRunoPlugin_TemplateForm> m_mainForm;
@@ -59,3 +61,4 @@ private:
     void GuiThreadMain();
     void CreateMainWindow();
 };
+
