@@ -1,64 +1,43 @@
 #pragma once
 
-#include <memory>
-#include <mutex>
-#include <thread>
-#include <atomic>
-#include <functional>
-#include <queue>
-#include <string>
-#include "iunoplugincontroller.h"
+#include <nana/gui.hpp>
+#include <nana/gui/widgets/button.hpp>
+#include <nana/gui/widgets/label.hpp>
+#include <nana/gui/timer.hpp>
+#include <iunoplugin.h>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+
+#include <iunoplugincontroller.h>
+#include "SDRunoPlugin_TemplateForm.h"
 
 class SDRunoPlugin_Template;
-class SDRunoPlugin_TemplateForm;
-class SDRunoPlugin_TemplateSettingsDialog;
-class UnoEvent;
 
-// UI manager
-class SDRunoPlugin_TemplateUi {
+class SDRunoPlugin_TemplateUi
+{
 public:
     SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
     ~SDRunoPlugin_TemplateUi();
 
-    void ShowSettingsDialog();
-    void UpdateMetrics(float rc, float inr, float lf, float rde, const std::string& msg, bool modoRestrictivo);
-    void UpdateSavePath(const std::string& path);
-    void SetStreamingState(bool streaming);
+    void HandleEvent(const UnoEvent& evt);
+    void FormClosed();
 
-    // Acciones desde diálogos/GUI
-    void ToggleCapture(bool enabled);
-    void RequestChangeBaseDir(const std::string& path);
-    void RequestChangeVrx(int vrxIndex);
-
-    // Consultas para GUI
-    std::string GetBaseDir() const;
+    void ShowUi();
 
     int LoadX();
     int LoadY();
-    void HandleEvent(const UnoEvent& ev);
-    void FormClosed();
-    void SettingsDialogClosed();
 
-    // ...
     void UpdateLed(bool signalPresent);
+
 private:
-    SDRunoPlugin_Template& m_parent;
-    std::shared_ptr<SDRunoPlugin_TemplateForm> m_mainForm;
-    std::shared_ptr<SDRunoPlugin_TemplateSettingsDialog> m_settingsDialog;
-    IUnoPluginController& m_controller;
+    SDRunoPlugin_Template & m_parent;
+    std::thread m_thread;
+    std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
 
-    // Hilo GUI
-    std::thread m_guiThread;
-    std::atomic<bool> m_guiRunning{false};
-    std::atomic<bool> m_shutdownRequested{false};
-    std::atomic<bool> m_unloadRequested{false};
-    std::mutex m_taskMutex;
-    std::queue<std::function<void()>> m_guiTasks;
+    bool m_started;
 
-    void StartGuiThread();
-    void StopGuiThread();
-    void PostToGuiThread(std::function<void()> task);
-    void GuiThreadMain();
-    void CreateMainWindow();
+    std::mutex m_lock;
+
+    IUnoPluginController & m_controller;
 };
-
