@@ -3,7 +3,7 @@
 #include <iunoplugincontroller.h>
 #include <vector>
 #include <chrono>
-#include <cmath> // Para sqrt
+#include <cmath>
 
 #include "SDRunoPlugin_Template.h"
 #include "SDRunoPlugin_TemplateUi.h"
@@ -26,13 +26,11 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_Template::StreamUpdate(float* samples, int length)
 {
-    // Detecta si hay señal (RMS simple)
     float sum = 0.0f;
     for (int i = 0; i < length; ++i) sum += samples[i] * samples[i];
     float rms = sqrt(sum / length);
-    m_signalPresent = (rms > 0.01f); // Umbral ajustable
+    m_signalPresent = (rms > 0.01f);
 
-    // Actualiza la UI
     m_form.UpdateLed(m_signalPresent);
 }
 
