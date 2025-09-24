@@ -3,6 +3,11 @@
 #include <Windows.h>
 #endif
 
+#include <nana/gui.hpp>
+#include <nana/gui/widgets/form.hpp>
+#include <nana/gui/widgets/picture.hpp>
+#include <nana/gui/widgets/label.hpp>
+#include <nana/gui/dragger.hpp>
 #include "SDRunoPlugin_TemplateForm.h"
 #include "SDRunoPlugin_TemplateSettingsDialog.h"
 #include "SDRunoPlugin_TemplateUi.h"

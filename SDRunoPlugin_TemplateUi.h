@@ -13,6 +13,7 @@
 #include "SDRunoPlugin_TemplateForm.h"
 
 class SDRunoPlugin_Template;
+class UnoEvent;
 
 // Gestor de la interfaz del plugin (crea y controla el formulario)
 class SDRunoPlugin_TemplateUi
