@@ -2,6 +2,7 @@
 #include "SDRunoPlugin_TemplateUi.h"
 #include "SDRunoPlugin_TemplateForm.h"
 #include <sstream>
+#include <string>
 
 #ifdef _WIN32
 #include <Windows.h>

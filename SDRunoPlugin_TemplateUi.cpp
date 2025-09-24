@@ -1,6 +1,8 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
+#include <memory>
+#include <string>
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
 #include <nana/gui/widgets/listbox.hpp>
@@ -43,7 +45,7 @@ int SDRunoPlugin_TemplateUi::LoadX()
     {
         return -1;
     }
-    return stoi(tmp);
+    return std::stoi(tmp);
 }
 
 int SDRunoPlugin_TemplateUi::LoadY()
@@ -54,7 +56,7 @@ int SDRunoPlugin_TemplateUi::LoadY()
     {
         return -1;
     }
-    return stoi(tmp);
+    return std::stoi(tmp);
 }
 
 void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)

@@ -11,6 +11,7 @@
 #include <thread>
 #include <mutex>
 #include <memory>
+#include <string>
 
 #include <iunoplugincontroller.h>
 
