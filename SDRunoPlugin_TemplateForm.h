@@ -13,6 +13,7 @@
 #include <iostream>
 #include <iomanip>
 #include <sstream>
+#include <memory>
 
 #include <iunoplugincontroller.h>
 
@@ -63,4 +64,7 @@ private:
 
     SDRunoPlugin_TemplateUi & m_parent;
     IUnoPluginController & m_controller;
+
+    // Settings dialog management
+    std::unique_ptr<class SDRunoPlugin_TemplateSettingsDialog> m_settingsDialog;
 };

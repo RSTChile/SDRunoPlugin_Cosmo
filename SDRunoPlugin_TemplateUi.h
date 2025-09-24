@@ -10,11 +10,12 @@
 #include <sstream>
 #include <thread>
 #include <mutex>
+#include <memory>
 
 #include <iunoplugincontroller.h>
-#include "SDRunoPlugin_TemplateForm.h"
 
 class SDRunoPlugin_Template;
+class SDRunoPlugin_TemplateForm;
 
 class SDRunoPlugin_TemplateUi
 {
