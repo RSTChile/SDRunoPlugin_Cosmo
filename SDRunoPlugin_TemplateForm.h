@@ -10,10 +10,6 @@
 #include <nana/gui/widgets/picture.hpp>
 #include <nana/gui/filebox.hpp>
 #include <nana/gui/dragger.hpp>
-#include <iostream>
-#include <iomanip>
-#include <sstream>
-
 #include <iunoplugincontroller.h>
 
 #define topBarHeight    (27)
@@ -24,7 +20,6 @@
 
 class SDRunoPlugin_TemplateUi;
 
-// Formulario del plugin. Gestiona la interfaz y sus controles.
 class SDRunoPlugin_TemplateForm : public nana::form
 {
 public:
@@ -37,7 +32,7 @@ public:
 private:
     void Setup();
 
-    // Controles de fondo y marco
+    // Controles visuales de la ventana principal
     nana::picture bg_border{ *this, nana::rectangle(0, 0, formWidth, formHeight) };
     nana::picture bg_inner{ bg_border, nana::rectangle(sideBorderWidth, topBarHeight,
                               formWidth - (2 * sideBorderWidth),
@@ -58,7 +53,7 @@ private:
     nana::paint::image img_sett_down;
     nana::paint::image img_header;
 
-    // Botones y etiquetas
+    // Botones
     nana::picture close_button{ *this, nana::rectangle(0, 0, 20, 15) };
     nana::picture min_button{ *this, nana::rectangle(0, 0, 20, 15) };
     nana::picture sett_button{ *this, nana::rectangle(0, 0, 40, 15) };
@@ -68,10 +63,11 @@ private:
     nana::picture ledPicture{ *this, nana::rectangle(20, 40, 20, 20) };
     nana::paint::image ledOnImg, ledOffImg;
 
-    // Controladores y parent
+    // Controladores
     SDRunoPlugin_TemplateUi& m_parent;
     IUnoPluginController& m_controller;
 
+    // Gestión de diálogo de configuración
     void SettingsButton_Click();
     void SettingsDialog_Closed();
 };
