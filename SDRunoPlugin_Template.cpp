@@ -4,7 +4,6 @@
 #include <vector>
 #include <chrono>
 #include <cmath>
-#include <complex>   // <-- añadido para std::norm
 #include "SDRunoPlugin_Template.h"
 #include "SDRunoPlugin_TemplateUi.h"
 
@@ -27,11 +26,15 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* data, int length)
 {
-    // Calcula RMS de la señal
+    // Calcula RMS de la señal (sin usar std::norm)
     float sum = 0.0f;
-    for (int i = 0; i < length; ++i)
-        sum += std::norm(data[i]);  // ahora std::norm está disponible
-    float rms = sqrt(sum / length);
+    for (int i = 0; i < length; ++i) {
+        // Calcular magnitud al cuadrado de cada muestra
+        float re = data[i].real();
+        float im = data[i].imag();
+        sum += re * re + im * im;
+    }
+    float rms = std::sqrt(sum / length);
     m_signalPresent = (rms > 0.01f);
 
     m_form.UpdateLed(m_signalPresent);
