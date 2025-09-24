@@ -10,7 +10,7 @@
 SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
     : IUnoPlugin(controller), m_form(*this, controller), m_worker(nullptr)
 {
-    m_channel = 0; // O el canal que corresponda
+    m_channel = 0;
     controller.RegisterStreamObserver(m_channel, this);
 }
 
@@ -26,10 +26,9 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* data, int length)
 {
-    // Calcula RMS de la señal (sin usar std::norm)
+    // Calcula RMS sin usar std::norm
     float sum = 0.0f;
     for (int i = 0; i < length; ++i) {
-        // Calcular magnitud al cuadrado de cada muestra
         float re = data[i].real();
         float im = data[i].imag();
         sum += re * re + im * im;
