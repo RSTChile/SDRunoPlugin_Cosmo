@@ -2,72 +2,49 @@
 
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
-#include <nana/gui/widgets/listbox.hpp>
-#include <nana/gui/widgets/slider.hpp>
 #include <nana/gui/widgets/label.hpp>
-#include <nana/gui/widgets/combox.hpp>
 #include <nana/gui/timer.hpp>
-#include <nana/gui/widgets/picture.hpp>
-#include <nana/gui/filebox.hpp>
-#include <nana/gui/dragger.hpp>
+#include <iunoplugin.h>
 #include <iunoplugincontroller.h>
+#include <memory>
+#include <thread>
+#include <mutex>
+#include <string>
+#include "SDRunoPlugin_TemplateForm.h"
 
-#define topBarHeight    (27)
-#define bottomBarHeight (8)
-#define sideBorderWidth (8)
-#define formWidth       (297)
-#define formHeight      (240)
+class SDRunoPlugin_Template;
 
-class SDRunoPlugin_TemplateUi;
-
-class SDRunoPlugin_TemplateForm : public nana::form
+// Gestor de la interfaz del plugin (crea y controla el formulario)
+class SDRunoPlugin_TemplateUi
 {
 public:
-    SDRunoPlugin_TemplateForm(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
-    ~SDRunoPlugin_TemplateForm();
+    SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
+    ~SDRunoPlugin_TemplateUi();
 
-    void Run();
-    void SetLedState(bool on);
+    void HandleEvent(const UnoEvent& evt);
+    void FormClosed();
+
+    void ShowUi();
+
+    int LoadX();
+    int LoadY();
+
+    void UpdateLed(bool signalPresent);
+
+    // Métodos para el diálogo de configuración
+    std::string GetBaseDir() const;
+    void RequestChangeBaseDir(const std::string& path);
+    void RequestChangeVrx(int vrxIndex);
+    void SettingsDialogClosed();
 
 private:
-    void Setup();
+    SDRunoPlugin_Template& m_parent;
+    std::thread m_thread;
+    std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
 
-    // Controles visuales de la ventana principal
-    nana::picture bg_border{ *this, nana::rectangle(0, 0, formWidth, formHeight) };
-    nana::picture bg_inner{ bg_border, nana::rectangle(sideBorderWidth, topBarHeight,
-                              formWidth - (2 * sideBorderWidth),
-                              formHeight - topBarHeight - bottomBarHeight) };
-    nana::picture header_bar{ *this, true };
-    nana::label   title_bar_label{ *this, true };
-    nana::dragger form_dragger;
-    nana::label   form_drag_label{ *this, nana::rectangle(0, 0, formWidth, formHeight) };
+    bool m_started;     // se puede inicializar en el constructor
+    std::mutex m_lock;
 
-    // Imágenes para botones y fondo
-    nana::paint::image img_bg_border;
-    nana::paint::image img_bg_inner;
-    nana::paint::image img_min_normal;
-    nana::paint::image img_min_down;
-    nana::paint::image img_close_normal;
-    nana::paint::image img_close_down;
-    nana::paint::image img_sett_normal;
-    nana::paint::image img_sett_down;
-    nana::paint::image img_header;
-
-    // Botones
-    nana::picture close_button{ *this, nana::rectangle(0, 0, 20, 15) };
-    nana::picture min_button{ *this, nana::rectangle(0, 0, 20, 15) };
-    nana::picture sett_button{ *this, nana::rectangle(0, 0, 40, 15) };
-    nana::label versionLbl{ *this, nana::rectangle(formWidth - 50, formHeight - 20, 50, 16) };
-
-    // LED
-    nana::picture ledPicture{ *this, nana::rectangle(20, 40, 20, 20) };
-    nana::paint::image ledOnImg, ledOffImg;
-
-    // Controladores
-    SDRunoPlugin_TemplateUi& m_parent;
     IUnoPluginController& m_controller;
-
-    // Gestión de diálogo de configuración
-    void SettingsButton_Click();
-    void SettingsDialog_Closed();
-}
+    std::string m_baseDir;  // Carpeta base para guardar datos
+};
