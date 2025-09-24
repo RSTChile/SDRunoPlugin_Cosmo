@@ -10,7 +10,6 @@
 #include <thread>
 #include <mutex>
 #include <string>
-
 #include "SDRunoPlugin_TemplateForm.h"
 
 class SDRunoPlugin_Template;
@@ -32,7 +31,7 @@ public:
 
     void UpdateLed(bool signalPresent);
 
-    // *** Métodos añadidos para el diálogo de configuración ***
+    // Métodos para el diálogo de configuración
     std::string GetBaseDir() const;
     void RequestChangeBaseDir(const std::string& path);
     void RequestChangeVrx(int vrxIndex);
@@ -43,7 +42,7 @@ private:
     std::thread m_thread;
     std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
 
-    bool m_started{false};
+    bool m_started{ false };
     std::mutex m_lock;
 
     IUnoPluginController& m_controller;
