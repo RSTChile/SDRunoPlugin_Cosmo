@@ -40,7 +40,7 @@ namespace {
 SDRunoPlugin_TemplateSettingsDialog::SDRunoPlugin_TemplateSettingsDialog(SDRunoPlugin_TemplateUi& ui, SDRunoPlugin_TemplateForm& owner, IUnoPluginController& controller)
     : m_ui(ui)
     , m_controller(controller)
-    , m_form(owner, rectangle(0, 0, 520, 360))
+    , m_form(owner.handle(), nana::rectangle(0, 0, 520, 360))
     , m_vrxList(m_form)
     , m_btnRefresh(m_form, "Refresh")
     , m_btnClose(m_form, "Close")
@@ -133,6 +133,7 @@ void SDRunoPlugin_TemplateSettingsDialog::close()
 {
     try { m_form.close(); } catch (...) {}
     try { m_ui.SettingsDialogClosed(); } catch (...) {}
+    delete this; // Self-delete after cleanup
 }
 
 nana::window SDRunoPlugin_TemplateSettingsDialog::handle() const
