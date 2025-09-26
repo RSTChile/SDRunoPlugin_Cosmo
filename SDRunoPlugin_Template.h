@@ -17,7 +17,7 @@ public:
     SDRunoPlugin_Template(IUnoPluginController& controller);
     virtual ~SDRunoPlugin_Template();
 
-    virtual const char* GetPluginName() const override { return "SDRuno Plugin Example"; }
+    virtual const char* GetPluginName() const override { return "SDRuno Plugin COSMO"; }
     virtual void HandleEvent(const UnoEvent& ev) override;
 
     // Implementación correcta de IUnoStreamObserver
