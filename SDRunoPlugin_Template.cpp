@@ -17,6 +17,15 @@ SDRunoPlugin_Template::SDRunoPlugin_Template(IUnoPluginController& controller)
 SDRunoPlugin_Template::~SDRunoPlugin_Template()
 {
     m_controller.UnregisterStreamObserver(m_channel, this);
+    
+    // Cleanup worker thread if it exists
+    if (m_worker) {
+        if (m_worker->joinable()) {
+            m_worker->join();
+        }
+        delete m_worker;
+        m_worker = nullptr;
+    }
 }
 
 void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev)

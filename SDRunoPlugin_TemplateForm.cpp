@@ -1,4 +1,5 @@
 #include <sstream>
+#include <memory>
 #ifdef _WIN32
 #include <Windows.h>
 #endif
@@ -35,15 +36,15 @@ void SDRunoPlugin_TemplateForm::Setup()
     using namespace nana;
 
     // Cargar imágenes desde la carpeta "resources"
-    img_bg_border.open("resources\\winback.bmp");
-    img_bg_inner.open("resources\\sp_blue_back.bmp");
-    img_header.open("resources\\HEADER.dib");
-    img_min_normal.open("resources\\MIN_BUT.bmp");
-    img_min_down.open("resources\\MIN_BUT_HIT.bmp");
-    img_close_normal.open("resources\\X_BUT.bmp");
-    img_close_down.open("resources\\X_BUT_HIT.bmp");
-    img_sett_normal.open("resources\\SETT.bmp");
-    img_sett_down.open("resources\\SETT_OVER.bmp");
+    img_bg_border.open("resources/winback.bmp");
+    img_bg_inner.open("resources/sp_blue_back.bmp");
+    img_header.open("resources/HEADER.dib");
+    img_min_normal.open("resources/MIN_BUT.bmp");
+    img_min_down.open("resources/MIN_BUT_HIT.bmp");
+    img_close_normal.open("resources/X_BUT.bmp");
+    img_close_down.open("resources/X_BUT_HIT.bmp");
+    img_sett_normal.open("resources/SETT.bmp");
+    img_sett_down.open("resources/SETT_OVER.bmp");
 
     // Asignar imágenes a los controles
     if (!img_bg_border.empty())  bg_border.load(img_bg_border);
@@ -65,15 +66,23 @@ void SDRunoPlugin_TemplateForm::Setup()
     title_bar_label.caption("Cosmo");
     title_bar_label.move(rectangle(sideBorderWidth + 5, 0, 150, topBarHeight));
     title_bar_label.fgcolor(colors::white);
+    
     versionLbl.caption(VERSION);
+    versionLbl.move(rectangle(sideBorderWidth + 5, topBarHeight + 10, 100, 20));
     versionLbl.bgcolor(colors::transparent);
     versionLbl.fgcolor(colors::white);
 
+    // Configurar área de arrastre (ocupa el área del título)
+    form_drag_label.move(rectangle(sideBorderWidth, 0, formWidth - sideBorderWidth - 100, topBarHeight));
+    form_drag_label.bgcolor(colors::transparent);
+
     // Preparar LED
-    ledOnImg.open("resources\\led_on.bmp");
-    ledOffImg.open("resources\\led_off.bmp");
-    ledPicture.load(ledOffImg, rectangle(0, 0, 20, 20));
-    // No se llama a ledPicture.transparent(true) para evitar el error de compilación
+    ledOnImg.open("resources/led_on.bmp");
+    ledOffImg.open("resources/led_off.bmp");
+    if (!ledOffImg.empty()) {
+        ledPicture.load(ledOffImg, rectangle(0, 0, 20, 20));
+    }
+    ledPicture.move(rectangle(sideBorderWidth + 160, topBarHeight + 10, 20, 20));
 
     // Permitir arrastrar la ventana
     form_dragger.target(*this);
@@ -115,18 +124,20 @@ void SDRunoPlugin_TemplateForm::Setup()
 
 void SDRunoPlugin_TemplateForm::SetLedState(bool on)
 {
-    if (on) {
+    if (on && !ledOnImg.empty()) {
         ledPicture.load(ledOnImg, nana::rectangle(0, 0, 20, 20));
-    } else {
+    } else if (!on && !ledOffImg.empty()) {
         ledPicture.load(ledOffImg, nana::rectangle(0, 0, 20, 20));
     }
 }
 
 void SDRunoPlugin_TemplateForm::SettingsButton_Click()
 {
-    auto settingsDialog = new SDRunoPlugin_TemplateSettingsDialog(m_parent, *this, m_controller);
+    auto settingsDialog = std::make_shared<SDRunoPlugin_TemplateSettingsDialog>(m_parent, *this, m_controller);
     this->enabled(false);
     settingsDialog->show();
+    
+    // El diálogo se auto-destruirá cuando se cierre a través de m_ui.SettingsDialogClosed()
 }
 
 void SDRunoPlugin_TemplateForm::SettingsDialog_Closed()

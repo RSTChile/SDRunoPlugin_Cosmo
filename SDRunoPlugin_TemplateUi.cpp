@@ -1,8 +1,7 @@
 #include <sstream>
+#include <string>
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
-#include <nana/gui/widgets/listbox.hpp>
-#include <nana/gui/widgets/slider.hpp>
 #include <nana/gui/widgets/label.hpp>
 #include <nana/gui/timer.hpp>
 #include <unoevent.h>
@@ -47,7 +46,11 @@ int SDRunoPlugin_TemplateUi::LoadX()
     m_controller.GetConfigurationKey("Template.X", tmp);
     if (tmp.empty())
         return -1;
-    return stoi(tmp);
+    try {
+        return std::stoi(tmp);
+    } catch (...) {
+        return -1;
+    }
 }
 
 int SDRunoPlugin_TemplateUi::LoadY()
@@ -56,7 +59,11 @@ int SDRunoPlugin_TemplateUi::LoadY()
     m_controller.GetConfigurationKey("Template.Y", tmp);
     if (tmp.empty())
         return -1;
-    return stoi(tmp);
+    try {
+        return std::stoi(tmp);
+    } catch (...) {
+        return -1;
+    }
 }
 
 void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)

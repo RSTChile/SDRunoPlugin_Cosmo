@@ -72,6 +72,11 @@ void SDRunoPlugin_TemplateSettingsDialog::BuildUi()
     m_btnFolder.events().click([this]() { OnPickFolder(); });
     m_btnClose.events().click([this]() { this->close(); });
 
+    // Handle window close button (X)
+    m_form.events().unload([this](const nana::arg_unload&) {
+        this->close();
+    });
+
     // Doble click: elegir VRX
     m_vrxList.events().dbl_click([this](const arg_mouse&) {
         auto sel = m_vrxList.selected();
