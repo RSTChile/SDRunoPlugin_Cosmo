@@ -41,10 +41,8 @@ private:
     SDRunoPlugin_Template& m_parent;
     std::thread m_thread;
     std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
-
     bool m_started{ false };
     std::mutex m_lock;
-
     IUnoPluginController& m_controller;
     std::string m_baseDir;  // Carpeta base para guardar datos
 };
