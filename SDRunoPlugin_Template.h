@@ -6,9 +6,6 @@
 #include <iunoplugincontroller.h>
 #include <iunoplugin.h>
 #include <iunostreamobserver.h>
-#include <iunoaudioobserver.h>
-#include <iunoaudioprocessor.h>
-#include <iunoannotator.h>
 #include "SDRunoPlugin_TemplateUi.h"
 
 class SDRunoPlugin_Template : public IUnoPlugin, public IUnoStreamObserver

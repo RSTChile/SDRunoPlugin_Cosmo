@@ -35,17 +35,27 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* data, int length)
 {
-    // Calcula RMS sin usar std::norm
-    float sum = 0.0f;
-    for (int i = 0; i < length; ++i) {
-        float re = data[i].real();
-        float im = data[i].imag();
-        sum += re * re + im * im;
+    // Safety checks
+    if (!data || length <= 0 || channel != m_channel) {
+        return;
     }
-    float rms = std::sqrt(sum / length);
-    m_signalPresent = (rms > 0.01f);
+    
+    try {
+        // Calcula RMS sin usar std::norm
+        float sum = 0.0f;
+        for (int i = 0; i < length; ++i) {
+            float re = data[i].real();
+            float im = data[i].imag();
+            sum += re * re + im * im;
+        }
+        float rms = std::sqrt(sum / length);
+        m_signalPresent = (rms > 0.01f);
 
-    m_form.UpdateLed(m_signalPresent);
+        m_form.UpdateLed(m_signalPresent);
+    } catch (...) {
+        // Handle any unexpected exceptions during signal processing
+        m_signalPresent = false;
+    }
 }
 
 void SDRunoPlugin_Template::WorkerFunction()
