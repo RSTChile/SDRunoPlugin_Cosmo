@@ -26,17 +26,27 @@ void SDRunoPlugin_Template::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Complex* data, int length)
 {
-    // Calcula RMS sin usar std::norm
+    if (!data || length <= 0) {
+        return;
+    }
+    
+    // Calcula RMS de la señal compleja
     float sum = 0.0f;
     for (int i = 0; i < length; ++i) {
         float re = data[i].real();
         float im = data[i].imag();
         sum += re * re + im * im;
     }
+    
     float rms = std::sqrt(sum / length);
-    m_signalPresent = (rms > 0.01f);
+    
+    // Usar un umbral más sensible para detección de señal
+    // El umbral de 0.001f detecta señales más débiles
+    bool signalDetected = (rms > 0.001f);
+    m_signalPresent = signalDetected;
 
-    m_form.UpdateLed(m_signalPresent);
+    // Actualizar LED con el estado de la señal
+    m_form.UpdateLed(signalDetected);
 }
 
 void SDRunoPlugin_Template::WorkerFunction()

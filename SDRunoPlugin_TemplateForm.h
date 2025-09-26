@@ -3,48 +3,50 @@
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
 #include <nana/gui/widgets/label.hpp>
+#include <nana/gui/widgets/panel.hpp>
 #include <nana/gui/timer.hpp>
 #include <iunoplugin.h>
 #include <iunoplugincontroller.h>
 #include <memory>
-#include <thread>
 #include <mutex>
+#include <atomic>
 #include <string>
-#include "SDRunoPlugin_TemplateForm.h"
 
-class SDRunoPlugin_Template;
+class SDRunoPlugin_TemplateUi;
 
-// Gestor de la interfaz del plugin (crea y controla el formulario)
-class SDRunoPlugin_TemplateUi
+// Formulario principal del plugin
+class SDRunoPlugin_TemplateForm : public nana::form
 {
 public:
-    SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
-    ~SDRunoPlugin_TemplateUi();
+    SDRunoPlugin_TemplateForm(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
+    ~SDRunoPlugin_TemplateForm();
 
-    void HandleEvent(const UnoEvent& evt);
-    void FormClosed();
+    void Run();
+    void SetLedState(bool signalPresent);
 
-    void ShowUi();
-
-    int LoadX();
-    int LoadY();
-
-    void UpdateLed(bool signalPresent);
-
-    // Métodos para el diálogo de configuración
-    std::string GetBaseDir() const;
-    void RequestChangeBaseDir(const std::string& path);
-    void RequestChangeVrx(int vrxIndex);
-    void SettingsDialogClosed();
+    int GetLoadX();
+    int GetLoadY();
 
 private:
-    SDRunoPlugin_Template& m_parent;
-    std::thread m_thread;
-    std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
-
-    bool m_started;     // se puede inicializar en el constructor
-    std::mutex m_lock;
-
+    void Setup();
+    void OnFormClose();
+    void OnSettingsClick();
+    void UpdateSignalLed();
+    
+    SDRunoPlugin_TemplateUi& m_parent;
     IUnoPluginController& m_controller;
-    std::string m_baseDir;  // Carpeta base para guardar datos
+    
+    // UI elements
+    std::unique_ptr<nana::label> m_titleLabel;
+    std::unique_ptr<nana::label> m_versionLabel;
+    std::unique_ptr<nana::panel> m_signalLed;
+    std::unique_ptr<nana::label> m_signalLabel;
+    std::unique_ptr<nana::button> m_settingsButton;
+    
+    // State
+    std::atomic<bool> m_signalPresent{false};
+    std::mutex m_uiMutex;
+    
+    // Timer for UI updates
+    std::unique_ptr<nana::timer> m_uiTimer;
 };
