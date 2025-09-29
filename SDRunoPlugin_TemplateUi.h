@@ -9,6 +9,7 @@
 #include <memory>
 #include <thread>
 #include <mutex>
+#include <atomic>
 #include <string>
 #include "SDRunoPlugin_TemplateForm.h"
 
@@ -42,7 +43,9 @@ private:
     std::thread m_thread;
     std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
     bool m_started{ false };
+    std::atomic<bool> m_shutdown{ false };  // Flag to prevent double destruction
     std::mutex m_lock;
+    std::mutex m_formMutex;  // Protects form creation/destruction
     IUnoPluginController& m_controller;
     std::string m_baseDir;  // Carpeta base para guardar datos
 };

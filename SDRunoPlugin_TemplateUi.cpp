@@ -29,14 +29,37 @@ SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent,
 
 SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 {
-    if (m_form) m_form->close();
-    if (m_thread.joinable()) m_thread.join();
+    std::lock_guard<std::mutex> lock(m_formMutex);
+    
+    // Set shutdown flag to prevent concurrent operations
+    m_shutdown = true;
+    
+    // Close form safely
+    if (m_form) {
+        m_form->close();
+    }
+    
+    // Join GUI thread safely
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
+    
+    // Clean up form pointer
+    m_form.reset();
+    
+    // Only call exit_all if this is the last instance
     nana::API::exit_all();
 }
 
 void SDRunoPlugin_TemplateUi::ShowUi()
 {
-    std::lock_guard<std::mutex> guard(m_lock);
+    std::lock_guard<std::mutex> guard(m_formMutex);
+    
+    // Check if we're shutting down
+    if (m_shutdown) {
+        return;
+    }
+    
     m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
     m_form->Run();
 }
@@ -79,14 +102,30 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
+    std::lock_guard<std::mutex> lock(m_formMutex);
+    
+    // Check if we're already shutting down to avoid double RequestUnload
+    if (m_shutdown) {
+        return;
+    }
+    
+    // Set shutdown flag to prevent concurrent access
+    m_shutdown = true;
+    
     // Solicitar descarga del plugin. m_parent es de tipo SDRunoPlugin_Template (implementa IUnoPlugin)
     m_controller.RequestUnload(&m_parent);
 }
 
 void SDRunoPlugin_TemplateUi::UpdateLed(bool signalPresent)
 {
-    std::lock_guard<std::mutex> guard(m_lock);
-    if (m_form) m_form->SetLedState(signalPresent);
+    std::lock_guard<std::mutex> guard(m_formMutex);
+    
+    // Check if we're shutting down or form is null
+    if (m_shutdown || !m_form) {
+        return;
+    }
+    
+    m_form->SetLedState(signalPresent);
 }
 
 std::string SDRunoPlugin_TemplateUi::GetBaseDir() const
@@ -112,8 +151,13 @@ void SDRunoPlugin_TemplateUi::RequestChangeVrx(int /*vrxIndex*/)
 
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
 {
-    if (m_form) {
-        m_form->enabled(true);
-        m_form->focus();
+    std::lock_guard<std::mutex> guard(m_formMutex);
+    
+    // Check if we're shutting down or form is null
+    if (m_shutdown || !m_form) {
+        return;
     }
+    
+    m_form->enabled(true);
+    m_form->focus();
 }
