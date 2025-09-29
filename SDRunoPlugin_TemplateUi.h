@@ -10,11 +10,12 @@
 #include <thread>
 #include <mutex>
 #include <string>
-#include "SDRunoPlugin_TemplateForm.h"
 
+// Forward declarations
 class SDRunoPlugin_Template;
+class SDRunoPlugin_TemplateForm;
 
-// Gestor de la interfaz del plugin (crea y controla el formulario)
+// UI manager class that handles window lifecycle
 class SDRunoPlugin_TemplateUi
 {
 public:
@@ -31,7 +32,7 @@ public:
 
     void UpdateLed(bool signalPresent);
 
-    // Métodos para el diálogo de configuración
+    // Methods for configuration dialog
     std::string GetBaseDir() const;
     void RequestChangeBaseDir(const std::string& path);
     void RequestChangeVrx(int vrxIndex);
@@ -41,8 +42,8 @@ private:
     SDRunoPlugin_Template& m_parent;
     std::thread m_thread;
     std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
-    bool m_started{ false };
+    bool m_started;
     std::mutex m_lock;
     IUnoPluginController& m_controller;
-    std::string m_baseDir;  // Carpeta base para guardar datos
+    std::string m_baseDir;  // Base folder for saving data
 };

@@ -1,3 +1,6 @@
+#include "SDRunoPlugin_TemplateUi.h"
+#include "SDRunoPlugin_Template.h"
+#include "SDRunoPlugin_TemplateForm.h"
 #include <sstream>
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
@@ -6,9 +9,6 @@
 #include <nana/gui/widgets/label.hpp>
 #include <nana/gui/timer.hpp>
 #include <unoevent.h>
-#include "SDRunoPlugin_Template.h"
-#include "SDRunoPlugin_TemplateUi.h"
-#include "SDRunoPlugin_TemplateForm.h"
 
 SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent,
                                                  IUnoPluginController& controller)
@@ -18,27 +18,57 @@ SDRunoPlugin_TemplateUi::SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent,
       m_controller(controller),
       m_started(false)
 {
-    // Inicializar carpeta base leyendo la configuración o tomando "." como predeterminado
+    // Initialize base directory from configuration or use default
     std::string tmp;
     m_controller.GetConfigurationKey("Template.BaseDir", tmp);
     m_baseDir = tmp.empty() ? std::string(".") : tmp;
 
-    // Lanzar el hilo de UI
+    // Launch the UI thread
     m_thread = std::thread(&SDRunoPlugin_TemplateUi::ShowUi, this);
 }
 
 SDRunoPlugin_TemplateUi::~SDRunoPlugin_TemplateUi()
 {
-    if (m_form) m_form->close();
-    if (m_thread.joinable()) m_thread.join();
-    nana::API::exit_all();
+    {
+        std::lock_guard<std::mutex> guard(m_lock);
+        if (m_form) {
+            m_form->close();
+            m_form.reset();
+        }
+    }
+    
+    if (m_thread.joinable()) {
+        m_thread.join();
+    }
+    
+    // Clean up any remaining Nana resources
+    try {
+        nana::API::exit_all();
+    } catch (...) {
+        // Ignore cleanup errors
+    }
 }
 
 void SDRunoPlugin_TemplateUi::ShowUi()
 {
-    std::lock_guard<std::mutex> guard(m_lock);
-    m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
-    m_form->Run();
+    try {
+        std::lock_guard<std::mutex> guard(m_lock);
+        if (!m_started) {
+            m_started = true;
+            
+            // Create the main form
+            m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
+            
+            // Show the form
+            m_form->show();
+            
+            // Run the message loop
+            nana::exec();
+        }
+    } catch (...) {
+        // Handle any UI creation errors
+        m_started = false;
+    }
 }
 
 int SDRunoPlugin_TemplateUi::LoadX()
@@ -61,6 +91,13 @@ int SDRunoPlugin_TemplateUi::LoadY()
 
 void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 {
+    {
+        std::lock_guard<std::mutex> guard(m_lock);
+        if (m_form) {
+            m_form->HandleEvent(ev);
+        }
+    }
+
     switch (ev.GetType())
     {
     case UnoEvent::StreamingStarted:
@@ -79,14 +116,16 @@ void SDRunoPlugin_TemplateUi::HandleEvent(const UnoEvent& ev)
 
 void SDRunoPlugin_TemplateUi::FormClosed()
 {
-    // Solicitar descarga del plugin. m_parent es de tipo SDRunoPlugin_Template (implementa IUnoPlugin)
+    // Request plugin unload. m_parent is of type SDRunoPlugin_Template (implements IUnoPlugin)
     m_controller.RequestUnload(&m_parent);
 }
 
 void SDRunoPlugin_TemplateUi::UpdateLed(bool signalPresent)
 {
     std::lock_guard<std::mutex> guard(m_lock);
-    if (m_form) m_form->SetLedState(signalPresent);
+    if (m_form) {
+        m_form->SetLedState(signalPresent);
+    }
 }
 
 std::string SDRunoPlugin_TemplateUi::GetBaseDir() const
@@ -99,19 +138,19 @@ void SDRunoPlugin_TemplateUi::RequestChangeBaseDir(const std::string& path)
     m_baseDir = path;
     try {
         m_controller.SetConfigurationKey("Template.BaseDir", path);
-    }
-    catch (...) {
-        // Ignorar fallos al guardar la configuración
+    } catch (...) {
+        // Ignore configuration save failures
     }
 }
 
 void SDRunoPlugin_TemplateUi::RequestChangeVrx(int /*vrxIndex*/)
 {
-    // No se implementa el cambio de VRX en tiempo de ejecución; función vacía para evitar errores de compilación.
+    // VRX changing at runtime not implemented; empty function to avoid compilation errors
 }
 
 void SDRunoPlugin_TemplateUi::SettingsDialogClosed()
 {
+    std::lock_guard<std::mutex> guard(m_lock);
     if (m_form) {
         m_form->enabled(true);
         m_form->focus();

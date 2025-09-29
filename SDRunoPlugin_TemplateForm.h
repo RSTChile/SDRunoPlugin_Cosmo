@@ -3,48 +3,64 @@
 #include <nana/gui.hpp>
 #include <nana/gui/widgets/button.hpp>
 #include <nana/gui/widgets/label.hpp>
+#include <nana/gui/widgets/panel.hpp>
 #include <nana/gui/timer.hpp>
 #include <iunoplugin.h>
 #include <iunoplugincontroller.h>
 #include <memory>
-#include <thread>
-#include <mutex>
 #include <string>
-#include "SDRunoPlugin_TemplateForm.h"
+#include <unoevent.h>
 
-class SDRunoPlugin_Template;
+// Forward declarations
+class SDRunoPlugin_TemplateUi;
 
-// Gestor de la interfaz del plugin (crea y controla el formulario)
-class SDRunoPlugin_TemplateUi
+class SDRunoPlugin_TemplateForm : public nana::form
 {
 public:
-    SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
-    ~SDRunoPlugin_TemplateUi();
+    SDRunoPlugin_TemplateForm(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
+    virtual ~SDRunoPlugin_TemplateForm();
 
-    void HandleEvent(const UnoEvent& evt);
-    void FormClosed();
+    void HandleEvent(const UnoEvent& ev);
+    void SetLedState(bool signalPresent);
+    void UpdateMetrics(float rc, float inr, float lf, float rde);
+    void SetMode(bool restrictive);
+    void ShowSettingsDialog();
 
-    void ShowUi();
-
-    int LoadX();
-    int LoadY();
-
-    void UpdateLed(bool signalPresent);
-
-    // Métodos para el diálogo de configuración
-    std::string GetBaseDir() const;
-    void RequestChangeBaseDir(const std::string& path);
-    void RequestChangeVrx(int vrxIndex);
-    void SettingsDialogClosed();
+    int GetLoadX();
+    int GetLoadY();
 
 private:
-    SDRunoPlugin_Template& m_parent;
-    std::thread m_thread;
-    std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
+    void Setup();
+    void OnUnload();
+    void OnSettingsClick();
+    void OnModeChanged();
+    void StartMetricsTimer();
+    void UpdateUI();
 
-    bool m_started;     // se puede inicializar en el constructor
-    std::mutex m_lock;
-
+    SDRunoPlugin_TemplateUi& m_parent;
     IUnoPluginController& m_controller;
-    std::string m_baseDir;  // Carpeta base para guardar datos
+
+    // UI Elements
+    nana::label m_titleLabel;
+    nana::label m_versionLabel;
+    nana::label m_rcLabel;
+    nana::label m_inrLabel;
+    nana::label m_lfLabel;
+    nana::label m_rdeLabel;
+    nana::label m_ledLabel;
+    nana::label m_modeLabel;
+    nana::button m_settingsBtn;
+    nana::button m_unloadBtn;
+    nana::panel<true> m_ledPanel;
+
+    // Timer for metrics update
+    std::unique_ptr<nana::timer> m_timer;
+    
+    // State
+    bool m_signalPresent;
+    bool m_restrictiveMode;
+    float m_lastRC, m_lastINR, m_lastLF, m_lastRDE;
+
+    static const int FORM_WIDTH = 297;
+    static const int FORM_HEIGHT = 240;
 };
