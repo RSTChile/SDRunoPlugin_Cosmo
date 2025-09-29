@@ -25,6 +25,7 @@ public:
     void UpdateMetrics(float rc, float inr, float lf, float rde);
     void SetMode(bool restrictive);
     void ShowSettingsDialog();
+    void Run(); // For compatibility with existing code
 
     int GetLoadX();
     int GetLoadY();

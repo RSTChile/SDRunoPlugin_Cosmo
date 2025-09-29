@@ -59,10 +59,10 @@ void SDRunoPlugin_TemplateUi::ShowUi()
             // Create the main form
             m_form = std::make_shared<SDRunoPlugin_TemplateForm>(*this, m_controller);
             
-            // Show the form
+            // Show the form and run the message loop
             m_form->show();
             
-            // Run the message loop
+            // Run the message loop (this will block until the window is closed)
             nana::exec();
         }
     } catch (...) {
@@ -125,6 +125,14 @@ void SDRunoPlugin_TemplateUi::UpdateLed(bool signalPresent)
     std::lock_guard<std::mutex> guard(m_lock);
     if (m_form) {
         m_form->SetLedState(signalPresent);
+    }
+}
+
+void SDRunoPlugin_TemplateUi::UpdateMetrics(float rc, float inr, float lf, float rde)
+{
+    std::lock_guard<std::mutex> guard(m_lock);
+    if (m_form) {
+        m_form->UpdateMetrics(rc, inr, lf, rde);
     }
 }
 

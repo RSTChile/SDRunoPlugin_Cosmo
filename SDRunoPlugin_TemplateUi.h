@@ -31,6 +31,7 @@ public:
     int LoadY();
 
     void UpdateLed(bool signalPresent);
+    void UpdateMetrics(float rc, float inr, float lf, float rde);
 
     // Methods for configuration dialog
     std::string GetBaseDir() const;

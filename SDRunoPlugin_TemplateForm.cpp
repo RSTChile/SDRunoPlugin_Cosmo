@@ -204,3 +204,10 @@ int SDRunoPlugin_TemplateForm::GetLoadY()
 {
     return 100; // Default Y position
 }
+
+void SDRunoPlugin_TemplateForm::Run()
+{
+    // This method is provided for compatibility
+    // In the new architecture, the UI manager handles window lifecycle
+    show();
+}
