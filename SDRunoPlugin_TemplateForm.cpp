@@ -33,4 +33,16 @@ void SDRunoPlugin_TemplateForm::Run()
     nana::exec();
 }
 
+void SDRunoPlugin_TemplateForm::Setup()
+{
+    // Setup UI elements here
+    // This would contain the original form setup code
+}
+
+void SDRunoPlugin_TemplateForm::SetLedState(bool signalPresent)
+{
+    // Update LED state based on signal presence
+    // This would update the LED indicator on the form
+}
+
 // Aquí iría el resto de la implementación, siguiendo el diseño original (Setup, eventos, etc.).

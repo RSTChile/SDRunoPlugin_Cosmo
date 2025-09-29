@@ -6,45 +6,26 @@
 #include <nana/gui/timer.hpp>
 #include <iunoplugin.h>
 #include <iunoplugincontroller.h>
-#include <memory>
-#include <thread>
-#include <mutex>
-#include <string>
-#include "SDRunoPlugin_TemplateForm.h"
 
-class SDRunoPlugin_Template;
+class SDRunoPlugin_TemplateUi;
 
-// Gestor de la interfaz del plugin (crea y controla el formulario)
-class SDRunoPlugin_TemplateUi
+// Form window for the plugin
+class SDRunoPlugin_TemplateForm : public nana::form
 {
 public:
-    SDRunoPlugin_TemplateUi(SDRunoPlugin_Template& parent, IUnoPluginController& controller);
-    ~SDRunoPlugin_TemplateUi();
+    SDRunoPlugin_TemplateForm(SDRunoPlugin_TemplateUi& parent, IUnoPluginController& controller);
+    ~SDRunoPlugin_TemplateForm();
 
-    void HandleEvent(const UnoEvent& evt);
-    void FormClosed();
-
-    void ShowUi();
-
-    int LoadX();
-    int LoadY();
-
-    void UpdateLed(bool signalPresent);
-
-    // Métodos para el diálogo de configuración
-    std::string GetBaseDir() const;
-    void RequestChangeBaseDir(const std::string& path);
-    void RequestChangeVrx(int vrxIndex);
-    void SettingsDialogClosed();
+    void Run();
+    void Setup();
+    void SetLedState(bool signalPresent);
 
 private:
-    SDRunoPlugin_Template& m_parent;
-    std::thread m_thread;
-    std::shared_ptr<SDRunoPlugin_TemplateForm> m_form;
-
-    bool m_started;     // se puede inicializar en el constructor
-    std::mutex m_lock;
-
+    SDRunoPlugin_TemplateUi& m_parent;
     IUnoPluginController& m_controller;
-    std::string m_baseDir;  // Carpeta base para guardar datos
+    
+    // UI elements would go here
+    // nana::label m_ledLabel;
+    // nana::button m_settingsButton;
+    // etc.
 };

@@ -29,8 +29,8 @@ void SDRunoPlugin_Template::StreamObserverProcess(channel_t channel, const Compl
     // Calcula RMS sin usar std::norm
     float sum = 0.0f;
     for (int i = 0; i < length; ++i) {
-        float re = data[i].real();
-        float im = data[i].imag();
+        float re = data[i].real;
+        float im = data[i].imag;
         sum += re * re + im * im;
     }
     float rms = std::sqrt(sum / length);
